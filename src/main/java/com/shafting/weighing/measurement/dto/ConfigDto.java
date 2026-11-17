@@ -1,10 +1,6 @@
 package com.shafting.weighing.measurement.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.*;
 import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
@@ -72,19 +68,19 @@ public final class ConfigDto {
             /** 测量点编码，必须属于当前启用的六点集合。 */
             @NotBlank String pointCode,
             /** 标准顶升力，单位 kN，可为 0。 */
-            @NotNull @PositiveOrZero BigDecimal standardForce,
+            @NotNull(message = "标准值必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal standardForce,
             /** 当前通道总值，单位 kN、精度 0.01；仅保存展示，可为 0。 */
-            @NotNull @PositiveOrZero BigDecimal totalValue,
+            @NotNull(message = "总值必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal totalValue,
             /** 顶升系数，必须大于 0。 */
-            @NotNull @Positive BigDecimal jackingCoefficient,
+            @NotNull(message = "顶升系数必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal jackingCoefficient,
             /** 自动测试目标位移兼安全上限，单位 mm，可为 0。 */
-            @NotNull @PositiveOrZero BigDecimal maxDisplacement,
+            @NotNull(message = "自动目标位移必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal maxDisplacement,
             /** 转速，单位 r/min，可为 0。 */
-            @NotNull @PositiveOrZero Integer motorRpm,
+            @NotNull(message = "顶升速度必须大于0且是整数") @Positive Integer motorRpm,
             /** 自动顶升累计力值间隔，单位 kN，必须大于 0。 */
-            @NotNull @Positive BigDecimal forceIntervalKn,
+            @NotNull(message = "力值间隔必须大于0且是整数") @Positive BigDecimal forceIntervalKn,
             /** 保持时间，单位秒，可为 0。 */
-            @NotNull @PositiveOrZero Integer holdSeconds) {
+            @NotNull(message = "时间间隔必须大于0且是整数") @Positive Integer holdSeconds) {
     }
 
     /** 设置页一次保存提交的完整参数方案。 */

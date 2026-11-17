@@ -180,7 +180,24 @@ class PhaseOneIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "operator", roles = "OPERATOR")
+    @WithMockUser(username = "engineer", roles = "ENGINEER")
+    void shouldRejectSelectedPointWhenAnyParameterIsMissing() throws Exception {
+        mockMvc.perform(put("/api/configs/1/points/TAIL_SHAFT")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(Map.of(
+                                "pointCode", "TAIL_SHAFT",
+                                "standardForce", new BigDecimal("100.00"),
+                                "totalValue", new BigDecimal("700.00"),
+                                "jackingCoefficient", new BigDecimal("1.0000"),
+                                "maxDisplacement", new BigDecimal("0.40"),
+                                "motorRpm", 1200,
+                                "forceIntervalKn", new BigDecimal("0.5000")))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "engineer", roles = "ENGINEER")
     void shouldInsertThenUpdateManualTargetForSelectedPoint() throws Exception {
         jdbcTemplate.update("DELETE FROM test_config_point WHERE config_id = 1 AND point_id = 1");
 
@@ -193,6 +210,17 @@ class PhaseOneIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT manual_target_displacement FROM test_config_point WHERE config_id = 1 AND point_id = 1",
                 BigDecimal.class)).isEqualByComparingTo("0.26");
+    }
+
+    @Test
+    @WithMockUser(username = "operator", roles = "OPERATOR")
+    void shouldForbidOperatorFromUpdatingManualTarget() throws Exception {
+        mockMvc.perform(put("/api/configs/1/points/TAIL_SHAFT/manual-target")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(Map.of(
+                                "targetDisplacementMm", new BigDecimal("0.26")))))
+                .andExpect(status().isForbidden());
     }
 
     private byte[] updateRequest() throws Exception {

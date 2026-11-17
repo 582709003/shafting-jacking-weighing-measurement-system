@@ -80,7 +80,7 @@ function renderSettingsForm() {
         maxDisplacement: 0, motorRpm: 0, forceIntervalKn: 0.5, holdSeconds: 0 };
     form.innerHTML = `<div class="settings-form-head"><div><p>当前通道</p><h2>${channels[channelIndex]}</h2></div><span>单通道新增或更新</span></div>
         <div class="settings-field-grid">${parameterRows.map(([name, unit, field, step]) => `
-            <label class="settings-field"><span>${name}</span><div><input type="number" min="0" step="${step}" data-field="${field}" aria-label="${channels[channelIndex]}${name}" value="${point[field] ?? defaults[field]}"><small>${unit}</small></div></label>`).join("")}</div>`;
+            <label class="settings-field"><span>${name}</span><div><input type="number" min="0" step="${step}" data-field="${field}" aria-label="${channels[channelIndex]}${name}" value="${point[field] ?? defaults[field]}" required><small>${unit}</small></div></label>`).join("")}</div>`;
     const canEdit = sessionContext?.roles.some(role => role === "ADMIN" || role === "ENGINEER");
     qa("input", form).forEach(input => input.disabled = !canEdit);
 }
@@ -125,13 +125,19 @@ async function saveSettingsConfig() {
     if (settingsSaving) return;
     const channel = channels[pointCodes.indexOf(activeSettingsPointCode)];
     const saveButton = q("#saveSettingsButton");
+    const point = { pointCode: activeSettingsPointCode };
+    for (const [name, , field] of parameterRows) {
+        const input = q(`#settingsForm [data-field="${field}"]`);
+        if (input.value.trim() === "") {
+            input.focus();
+            showSettingsNotice("error", `${channel}${name}不能为空。`);
+            return;
+        }
+        point[field] = Number(input.value);
+    }
     settingsSaving = true;
     saveButton.disabled = true;
     showSettingsNotice("info", `正在保存${channel}参数……`);
-    const point = { pointCode: activeSettingsPointCode };
-    parameterRows.forEach(([, , field]) => {
-        point[field] = Number(q(`#settingsForm [data-field="${field}"]`).value);
-    });
     try {
         const response = await fetch(`/api/configs/1/points/${activeSettingsPointCode}`, {
             method: "PUT",
@@ -218,26 +224,30 @@ function selectedChannelState() {
 
 function syncCurrentRun() {
     const selected = selectedChannelState();
-    if (!selected?.runId) {
-        if (currentRun && !controlState.channels.some(channel => channel.runId === currentRun.runId)) {
-            realtimeEvents?.close();
-            realtimeEvents = undefined;
-            currentRun = undefined;
-        }
+    const manualAction = ["ASCENDING", "DESCENDING", "MANUAL_QUICK_RELEASE"].includes(selected?.action);
+    const subscriptionKey = selected?.runId ? `run:${selected.runId}`
+            : manualAction ? `point:${selected.pointCode}` : undefined;
+    if (!subscriptionKey) {
+        realtimeEvents?.close();
+        realtimeEvents = undefined;
+        currentRun = undefined;
         return;
     }
     const state = selected.paused ? "PAUSED" : "RUNNING";
-    if (currentRun?.runId !== selected.runId) {
-        currentRun = { runId: selected.runId, state, processStage: "WAITING" };
-        subscribeRealtime(selected.runId);
+    if (currentRun?.subscriptionKey !== subscriptionKey) {
+        currentRun = { runId: selected.runId, pointCode: selected.pointCode,
+            subscriptionKey, state, processStage: "WAITING" };
+        subscribeRealtime(selected.runId
+                ? `/api/runs/${selected.runId}/events`
+                : `/api/points/${selected.pointCode}/events`);
     } else {
         currentRun.state = state;
     }
 }
 
-function subscribeRealtime(runId) {
+function subscribeRealtime(url) {
     realtimeEvents?.close();
-    realtimeEvents = new EventSource(`/api/runs/${runId}/events`);
+    realtimeEvents = new EventSource(url);
     realtimeEvents.addEventListener("measurement", event => renderRealtime(JSON.parse(event.data)));
     realtimeEvents.onerror = () => {
         q("#runStateLabel").textContent = "实时连接中断，正在自动重连";
@@ -249,7 +259,7 @@ function renderRealtime(snapshot) {
     q('[data-reading="displacement"]').textContent = Number(snapshot.displacementMm).toFixed(2);
     q('[data-reading="rpm"]').textContent = String(snapshot.motorRpm);
     q('[data-reading="force"]').textContent = Number(snapshot.forceKn).toFixed(1);
-    q("#simulatorStatus").innerHTML = "<i></i>模拟器推送中";
+    q("#simulatorStatus").innerHTML = "<i></i>实时数据推送中";
     q("#runStateLabel").textContent = `${stateName(snapshot.state)} · ${new Date(snapshot.capturedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
     q("#runStateLabel").classList.add("live");
     renderProcessStage(snapshot.processStage);
@@ -282,6 +292,7 @@ function renderRunState() {
 function renderControlState() {
     if (!controlState || !sessionContext) return;
     const canControl = sessionContext.roles.some(role => ["ADMIN", "ENGINEER", "OPERATOR"].includes(role));
+    const canEditManualTarget = sessionContext.roles.some(role => ["ADMIN", "ENGINEER"].includes(role));
     const channel = selectedChannelState();
     const globalQuickRelease = controlState.globalAction === "AUTO_QUICK_RELEASE";
     const anyAction = controlState.channels.some(item => item.action !== "IDLE");
@@ -293,9 +304,9 @@ function renderControlState() {
     const config = configByPoint.get(activePointCode);
     const target = Number(q("#targetDisplacementInput").value);
     const savedTarget = Number(config?.manualTargetDisplacement || 0);
-    const targetConfigured = Number(config?.maxDisplacement) > 0;
-    const automaticConfigured = targetConfigured && Number(config?.forceIntervalKn) > 0;
-    const targetValid = target > 0 && target <= Number(config?.maxDisplacement);
+    const automaticTargetConfigured = Number(config?.maxDisplacement) > 0;
+    const automaticConfigured = automaticTargetConfigured && Number(config?.forceIntervalKn) > 0;
+    const targetValid = target > 0;
     const targetSaved = !manualTargetDirty && target > 0 && target === savedTarget;
 
     setButtonState(q("#manualModeButton"), manual);
@@ -312,10 +323,10 @@ function renderControlState() {
     q("#manualStartButton").disabled = !canControl || !available || !manual || !idle
             || anyAction || globalQuickRelease || channel.manualStarted;
 
-    q("#targetDisplacementInput").disabled = !canControl || !available || !manual || !idle || anyAction;
+    q("#targetDisplacementInput").disabled = !canEditManualTarget || !available || !manual || !idle || anyAction;
     setButtonState(q("#saveManualTargetButton"), targetSaved);
     q("#saveManualTargetButton b").textContent = targetSaved ? "已保存" : "保存";
-    q("#saveManualTargetButton").disabled = !canControl || !available || !manual || !idle
+    q("#saveManualTargetButton").disabled = !canEditManualTarget || !available || !manual || !idle
             || anyAction || globalQuickRelease || target <= 0 || targetSaved;
     q("#zeroDisplacementButton").disabled = !canControl || !available || channel.mode === "OFF"
             || !idle || globalQuickRelease;
@@ -329,19 +340,25 @@ function renderControlState() {
     const manualActionAllowed = canControl && available && manual && channel.manualStarted
             && idle && !anyAction && !globalQuickRelease;
     q("#manualAscendButton").disabled = !manualActionAllowed || !channel.zeroed
-            || !targetConfigured || !targetValid || !targetSaved;
+            || !targetValid || !targetSaved;
+    q("#manualAscendButton").title = !targetSaved
+            ? "请先由管理员或工程师保存大于 0 mm 的目标位移"
+            : !channel.zeroed ? "请在手动模式下重新执行本通道位移清零" : "";
     q("#manualDescendButton").disabled = !manualActionAllowed;
     q("#manualQuickReleaseButton").disabled = !manualActionAllowed;
     setButtonState(q("#manualPauseButton"), manualAction && channel.paused);
     q("#manualPauseButton b").textContent = channel.paused ? "继续" : "暂停";
     q("#manualPauseButton").disabled = !canControl || !available || !manualAction;
-    q("#manualStopButton").disabled = !canControl || !available || !manualAction || !channel.runId;
+    q("#manualStopButton").disabled = !canControl || !available || !manualAction;
     setButtonState(q("#manualStopButton"), false);
 
     const autoTestActive = channel.action === "AUTO_TEST";
     setButtonState(q("#startAutoTestButton"), autoTestActive);
     q("#startAutoTestButton").disabled = !canControl || !available || !automatic || !idle
             || anyAction || !channel.zeroed || globalQuickRelease || !automaticConfigured;
+    q("#startAutoTestButton").title = !channel.zeroed
+            ? "请在自动模式下重新执行本通道位移清零"
+            : !automaticConfigured ? "请先配置自动目标位移和力值间隔" : "";
     setButtonState(q("#autoQuickReleaseButton"), globalQuickRelease);
     q("#autoQuickReleaseButton").disabled = !canControl || !available || !automatic
             || globalQuickRelease || anyAction;
@@ -619,8 +636,17 @@ function formatCurveTaskTime(value) {
 
 async function loadCurveTask(task, page) {
     currentCurveRun = task;
+    q(`[data-chart-notice="${page.chartId}"]`).hidden = true;
     await loadRunSamples(task.runId, page);
+    await loadSavedCurveFit(task.runId, page.chartId);
     q(`#${page.metaId}`).textContent = `${task.taskNo}｜完成于 ${formatCurveTaskTime(task.completedAt)}`;
+}
+
+async function loadSavedCurveFit(runId, chartId) {
+    const response = await fetch(`/api/runs/${runId}/curve-fit`);
+    if (response.status === 404) return;
+    if (!response.ok) throw new Error(await responseError(response, "读取已保存拟合结果失败"));
+    q(`#${chartId}`).setFitState?.(await response.json());
 }
 
 function showCurveLoadError(error, page) {
@@ -795,6 +821,14 @@ function createCurveChart(container) {
         update();
     }
     container.resetFit = reset;
+    container.setFitState = fit => {
+        const segmentPoints = segment => [segment.first, segment.second]
+                .map(item => [Number(item.forceKn), Number(item.displacementMm)]);
+        state.down = segmentPoints(fit.lowering);
+        state.up = segmentPoints(fit.lifting);
+        // 中间虚线由升、降拟合线端点计算，避免保存一份可能不一致的冗余数据。
+        update();
+    };
     container.getFitState = () => ({
         lifting: { first: point(state.up[0]), second: point(state.up[1]) },
         lowering: { first: point(state.down[0]), second: point(state.down[1]) }
@@ -818,20 +852,37 @@ async function autoFitCurrentRun() {
     return result;
 }
 
-async function saveManualFit(chartId) {
-    if (document.body.dataset.role !== "ADMIN") throw new Error("仅管理员可保存人工修订");
-    const run = currentCurveRun || currentRun;
-    if (!run) throw new Error("请先选择测量任务");
-    const response = await fetch(`/api/runs/${run.runId}/curve-fit/manual`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            [sessionContext.csrfHeaderName]: sessionContext.csrfToken
-        },
-        body: JSON.stringify(q(`#${chartId}`).getFitState())
-    });
-    if (!response.ok) throw new Error("保存人工拟合修订失败");
-    renderMeasuredResult(await response.json());
+function showCurveSaveNotice(chartId, type, message) {
+    const notice = q(`[data-chart-notice="${chartId}"]`);
+    notice.className = `notice notice-${type} curve-save-notice`;
+    notice.textContent = message;
+    notice.hidden = false;
+}
+
+async function saveManualFit(button) {
+    const chartId = button.dataset.chart;
+    button.disabled = true;
+    showCurveSaveNotice(chartId, "info", "正在保存调整结果……");
+    try {
+        if (document.body.dataset.role !== "ADMIN") throw new Error("仅管理员可保存人工修订");
+        const run = currentCurveRun || currentRun;
+        if (!run) throw new Error("请先选择测量任务");
+        const response = await fetch(`/api/runs/${run.runId}/curve-fit/manual`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                [sessionContext.csrfHeaderName]: sessionContext.csrfToken
+            },
+            body: JSON.stringify(q(`#${chartId}`).getFitState())
+        });
+        if (!response.ok) throw new Error(await responseError(response, "保存调整结果失败，请稍后重试。"));
+        renderMeasuredResult(await response.json());
+        showCurveSaveNotice(chartId, "success", "调整结果保存成功，三条拟合线位置已记录。");
+    } catch (error) {
+        showCurveSaveNotice(chartId, "error", error.message);
+    } finally {
+        button.disabled = document.body.dataset.role !== "ADMIN";
+    }
 }
 
 async function finalizeCompletedRun() {
@@ -883,7 +934,9 @@ function renderRecords(rows) {
         <td>${row.measuredForceKn == null ? "--" : `${Number(row.measuredForceKn).toFixed(2)} kN`}</td>
         <td><span class="table-status ${row.state === "COMPLETED" ? "saved" : "draft"}">${escapeHtml(stateName(row.state))}</span></td>
         <td>${escapeHtml(row.startedAt ? new Date(row.startedAt).toLocaleString("zh-CN", { hour12: false }) : "--")}</td>
-        <td><button data-record-run="${row.runId}" data-record-task="${row.taskId}">查看</button></td>
+        <td>${row.state === "COMPLETED"
+            ? `<button data-record-run="${row.runId}" data-record-task="${row.taskId}">查看</button>`
+            : ""}</td>
     </tr>`).join("") || '<tr><td colspan="7">暂无测量记录</td></tr>';
     qa("[data-record-run]").forEach(button => button.addEventListener("click", async () => {
         const row = recordRows.find(item => item.runId === Number(button.dataset.recordRun));
@@ -1018,8 +1071,7 @@ function setupAuthenticatedActions() {
     q("#refreshAlarmsButton").addEventListener("click", () => loadAlarms().catch(() => {}));
     qa(".save-fit").forEach(button => {
         button.disabled = document.body.dataset.role !== "ADMIN";
-        button.addEventListener("click", () => saveManualFit(button.dataset.chart)
-                .catch(error => q("#runStateLabel").textContent = error.message));
+        button.addEventListener("click", () => saveManualFit(button));
     });
     renderRunState();
 }
@@ -1052,8 +1104,8 @@ async function init() {
     const canEditCurve = document.body.dataset.role === "ADMIN";
     qa(".reset-fit").forEach(button => button.addEventListener("click", () => {
         if (!canEditCurve) return;
-        autoFitCurrentRun().then(() => q(`#${button.dataset.chart}`).resetFit?.())
-                .catch(error => q("#runStateLabel").textContent = error.message);
+        // 只撤销当前页面未保存的拖动，原始端点已由所选任务的测量记录计算得出。
+        q(`#${button.dataset.chart}`).resetFit?.();
     }));
     setupNavigation();
     setupAuthenticatedActions();

@@ -61,8 +61,8 @@ public class MeasurementTaskService {
     /**
      * 创建一条任务和一条待启动运行记录。
      *
-     * <p>兼容旧任务接口时模式为 SIMULATED；新控制面板通过 createControlTask 创建
-     * MANUAL 或 AUTOMATIC 运行。当前每个任务仍只有一个运行。</p>
+     * <p>兼容旧任务接口时模式为 SIMULATED；自动测试通过 createAutomaticControlTask 创建
+     * AUTOMATIC 运行。手动操作不创建任务。当前每个任务仍只有一个运行。</p>
      *
      * @param request 工作页提交的任务信息
      * @param username 当前操作账号
@@ -74,23 +74,18 @@ public class MeasurementTaskService {
     }
 
     /**
-     * 由新控制面板创建自动或手动运行。
+     * 由工作页自动测试创建任务和运行。
      *
      * @param configId 参数方案主键
      * @param pointCode 测量点编码
      * @param taskName 自动生成的任务名称
      * @param username 当前操作账号
-     * @param mode MANUAL 或 AUTOMATIC
-     * @param started 手动动作是否在创建时直接进入运行状态
      * @return 新任务和运行状态
      */
     @Transactional
-    public TaskDto.TaskResponse createControlTask(Long configId, String pointCode, String taskName,
-                                                   String username, String mode, boolean started) {
-        if (!"MANUAL".equals(mode) && !"AUTOMATIC".equals(mode)) {
-            throw new IllegalArgumentException("控制任务模式只能为 MANUAL 或 AUTOMATIC");
-        }
-        return createTask(configId, pointCode, taskName, username, mode, started);
+    public TaskDto.TaskResponse createAutomaticControlTask(Long configId, String pointCode, String taskName,
+                                                            String username) {
+        return createTask(configId, pointCode, taskName, username, "AUTOMATIC", false);
     }
 
     private TaskDto.TaskResponse createTask(Long configId, String pointCode, String taskName,

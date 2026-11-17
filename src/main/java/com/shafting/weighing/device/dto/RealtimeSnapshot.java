@@ -6,9 +6,9 @@ import java.time.Instant;
 
 /** 工作页通过 SSE 接收的一次实时测量快照。 */
 public record RealtimeSnapshot(
-        /** 测量运行主键。 */
+        /** 自动测量运行主键；手动操作不创建运行记录，因此为空。 */
         Long runId,
-        /** 所属测量任务主键。 */
+        /** 自动测量任务主键；手动操作不创建任务，因此为空。 */
         Long taskId,
         /** 当前运行的测量点编码。 */
         String pointCode,

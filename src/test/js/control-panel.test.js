@@ -16,10 +16,16 @@ const styles = fs.readFileSync(path.join(root, "src/main/resources/static/protot
 
 assert.match(script, /\/api\/control\/state/);
 assert.match(script, /\/api\/control\/commands/);
+assert.match(script, /required><small>/);
+assert.match(script, /不能为空/);
 assert.doesNotMatch(script, /maxPressure|压力上限/);
 assert.match(script, /MANUAL_ENABLE/);
 assert.match(script, /\/manual-target/);
+assert.match(script, /const canEditManualTarget = sessionContext\.roles\.some\(role => \["ADMIN", "ENGINEER"\]\.includes\(role\)\)/);
 assert.match(script, /MANUAL_PAUSE/);
+assert.match(script, /\/api\/points\/\$\{selected\.pointCode\}\/events/);
+assert.doesNotMatch(script, /manualStopButton"\)\.disabled[^;]+channel\.runId/);
+assert.doesNotMatch(script, /target <= Number\(config\?\.maxDisplacement\)/);
 assert.match(script, /AUTO_QUICK_RELEASE/);
 assert.match(script, /AUTO_STOP/);
 assert.doesNotMatch(html, /masterEnableButton/);

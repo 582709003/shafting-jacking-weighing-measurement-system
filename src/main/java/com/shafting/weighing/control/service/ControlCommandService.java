@@ -130,7 +130,7 @@ public class ControlCommandService {
         ControlDto.ChannelState channel = stateService.channel(pointCode);
         if (channel.mode() != mode && channel.action() == ControlDto.ChannelAction.IDLE
                 && channel.runId() != null) {
-            // 手动上升到位后运行可处于空闲，切换模式前仍需关闭该运行，避免遗留模拟会话。
+            // 自动运行停止后可能短暂保留关联主键，切换模式前先关闭，避免遗留设备会话。
             taskService.forceStop(channel.runId(), null);
         }
         stateService.connectMode(pointCode, mode);
@@ -213,8 +213,8 @@ public class ControlCommandService {
         }
         stateService.beginAction(pointCode, ControlDto.ChannelAction.AUTO_TEST, null, true);
         try {
-            TaskDto.TaskResponse task = taskService.createControlTask(configId, pointCode,
-                    point.getPointName() + "自动测试", username, "AUTOMATIC", false);
+            TaskDto.TaskResponse task = taskService.createAutomaticControlTask(configId, pointCode,
+                    point.getPointName() + "自动测试", username);
             TaskDto.TaskResponse running = taskService.command(task.runId(),
                     new TaskDto.CommandRequest(request.commandNo(), TaskDto.CommandType.START));
             stateService.attachRun(pointCode, running.runId());

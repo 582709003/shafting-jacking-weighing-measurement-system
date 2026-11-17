@@ -93,7 +93,7 @@ public class MeasurementConfigController {
     /**
      * 保存工作页当前通道的手动目标位移，供后续手动上升命令读取。
      *
-     * <p>ADMIN、ENGINEER、OPERATOR 可调用。目标必须大于 0；数据库没有当前通道参数行时
+     * <p>仅 ADMIN、ENGINEER 可调用。目标必须大于 0；数据库没有当前通道参数行时
      * 新增，已有时只更新手动目标位移，同时递增参数版本并写入审计。</p>
      *
      * @param configId 参数方案主键
@@ -103,7 +103,7 @@ public class MeasurementConfigController {
      * @return 保存后的最新参数方案
      */
     @PutMapping("/configs/{configId}/points/{pointCode}/manual-target")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ENGINEER')")
     public ConfigDto.ConfigResponse saveManualTarget(@PathVariable Long configId,
                                                      @PathVariable String pointCode,
                                                      @Valid @RequestBody ConfigDto.ManualTargetRequest request,

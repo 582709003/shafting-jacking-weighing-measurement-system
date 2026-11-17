@@ -36,6 +36,8 @@ assert.ok(js.includes('fetch("/api/configs/1")'), "设置页应从后端读取�
 assert.ok(html.includes('id="settingsChannelTabs"') && html.includes('id="settingsForm"'), "设置页应按通道提供 Tab 和单通道表单");
 assert.ok(!html.includes('id="settingsMatrix"') && !html.includes('id="settingsChannelSelector"'), "设置页不应继续显示六通道矩阵和重复选择器");
 assert.ok(js.includes('/api/configs/1/points/'), "设置页应只保存当前通道参数");
+assert.ok(js.includes('input.value.trim() === ""') && js.includes('不能为空。'),
+        "设置页保存前必须拦截任一空参数");
 assert.ok(html.includes('id="settingsNotice" role="status" aria-live="polite"'),
         "设置页保存反馈应支持无障碍状态播报");
 assert.ok(js.includes('showSettingsNotice("success"') && js.includes('showSettingsNotice("error"')
@@ -49,6 +51,8 @@ assert.ok(js.includes('totalValue'), "设置页应记录每个通道的总值");
 assert.ok(js.includes('fetch("/api/control/state")'), "工作页应读取后端权威控制状态");
 assert.ok(js.includes('fetch("/api/control/commands"'), "工作页应通过统一接口发送控制命令");
 assert.ok(js.includes("new EventSource"), "工作页应通过 SSE 接收实时状态");
+assert.ok(js.includes('/api/points/${selected.pointCode}/events'),
+        "无运行记录的手动操作应按通道订阅实时传感器数据");
 assert.ok(html.includes('id="manualModeButton"') && html.includes('id="autoModeButton"'), "工作页应分离手动和自动模式");
 assert.ok(html.includes('id="manualStartButton"'), "手动模式应提供独立启动按钮");
 assert.ok(html.includes('id="saveManualTargetButton"') && js.includes('/manual-target'), "手动目标位移应支持按通道保存");
@@ -73,7 +77,22 @@ assert.ok(js.includes('/result/adjustment-coefficient') && js.includes('method: 
 assert.ok(html.includes("上升压力") && html.includes("下降压力"), "曲线页表格应展示保存后的压力原始采样");
 assert.ok(html.includes('id="shaftCurveTaskSelect"') && html.includes('id="mainCurveTaskSelect"'), "两个曲线页均应提供已完成测量任务下拉框");
 assert.ok(js.includes('/api/records/completed?pointCode='), "曲线页应按通道读取已完成测量任务");
+assert.ok(js.includes('/api/runs/${runId}/curve-fit') && js.includes('container.setFitState = fit =>'),
+        "曲线页重新选择任务时应回显已保存的人工拟合端点");
+assert.ok((html.match(/data-chart-notice=/g) || []).length === 2
+        && html.includes('class="notice notice-info curve-save-notice"'),
+        "两个曲线页均应提供调整结果保存状态提示");
+assert.ok(js.includes('showCurveSaveNotice(chartId, "success"')
+        && js.includes('showCurveSaveNotice(chartId, "error"') && js.includes("finally"),
+        "曲线调整保存应显示成功或失败信息并恢复按钮状态");
+assert.ok(js.includes('row.state === "COMPLETED"') && js.includes('data-record-run='),
+        "测量记录页只能为完整完成的任务提供查看按钮");
 assert.ok(js.includes('state[kind][index][1]'), "拟合端点拖动时应锁定纵坐标");
+assert.ok(js.includes('state.down = JSON.parse(JSON.stringify(defaults.down))')
+        && js.includes('state.up = JSON.parse(JSON.stringify(defaults.up))'),
+        "恢复自动拟合应使用当前测量记录生成的原始端点");
+assert.ok(!js.includes('autoFitCurrentRun().then(() => q(`#${button.dataset.chart}`).resetFit?.())'),
+        "恢复自动拟合不应新增后端拟合修订，只撤销当前页面的端点拖动");
 assert.ok(js.includes("processStage"), "工作页应显示模拟自动流程阶段");
 assert.ok(!js.includes("? 3 : 1"), "位移表格不应继续显示 0.001 mm 精度");
 

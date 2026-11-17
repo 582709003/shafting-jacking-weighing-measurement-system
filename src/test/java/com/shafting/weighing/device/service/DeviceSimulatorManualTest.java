@@ -4,6 +4,7 @@ import com.shafting.weighing.control.dto.ControlDto;
 import com.shafting.weighing.control.service.ControlStateService;
 import com.shafting.weighing.device.config.SimulatorProperties;
 import com.shafting.weighing.device.dto.RealtimeSnapshot;
+import com.shafting.weighing.device.entity.MeasurementSample;
 import com.shafting.weighing.device.mapper.MeasurementSampleMapper;
 import com.shafting.weighing.task.mapper.MeasurementTaskMapper;
 import com.shafting.weighing.task.mapper.TestRunMapper;
@@ -61,13 +62,16 @@ class DeviceSimulatorManualTest {
         assertThat(stateService.channel("TAIL_SHAFT").runId()).isNull();
         verify(gateway).sendAscending("TAIL_SHAFT");
         verify(gateway).sendStop("TAIL_SHAFT");
-        verify(sampleMapper, never()).insert(any());
+        verify(sampleMapper, never()).insert(any(MeasurementSample.class));
         verifyNoInteractions(testRunMapper, taskMapper);
 
         ArgumentCaptor<RealtimeSnapshot> snapshots = ArgumentCaptor.forClass(RealtimeSnapshot.class);
-        verify(publisher, org.mockito.Mockito.times(3)).publish(snapshots.capture());
-        assertThat(snapshots.getAllValues().get(1).displacementMm()).isEqualByComparingTo("0.03");
-        assertThat(snapshots.getAllValues().get(2).state()).isEqualTo("STOPPED");
+        verify(publisher, org.mockito.Mockito.times(2)).publish(snapshots.capture());
+        RealtimeSnapshot realtime = snapshots.getAllValues().get(0);
+        assertThat(realtime.displacementMm()).isEqualByComparingTo("0.03");
+        assertThat(realtime.forceKn()).isEqualByComparingTo("12.3");
+        assertThat(realtime.motorRpm()).isEqualTo(800);
+        assertThat(snapshots.getAllValues().get(1).state()).isEqualTo("STOPPED");
     }
 
     @Test
