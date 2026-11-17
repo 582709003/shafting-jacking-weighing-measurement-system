@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: shafting-jacking-weighing-system
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/shafting_weighing?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:582709}
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  bootstrap:
+    admin-password: ${ADMIN_INITIAL_PASSWORD:Admin@123}
+  simulator:
+    enabled: ${SIMULATOR_ENABLED:true}
+    interval-ms: ${SIMULATOR_INTERVAL_MS:500}
+    precheck-ms: ${SIMULATOR_PRECHECK_MS:1000}
+    lifting-ms: ${SIMULATOR_LIFTING_MS:8000}
+    lowering-ms: ${SIMULATOR_LOWERING_MS:8000}
+    fallback-force-kn: ${SIMULATOR_FALLBACK_FORCE_KN:180.0}

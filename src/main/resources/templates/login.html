@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · 轴系顶升称重测量系统</title>
+    <link rel="stylesheet" href="/prototype/styles.css">
+</head>
+<body>
+<section class="login-screen">
+    <div class="login-visual">
+        <div class="shaft-mark" aria-hidden="true">
+            <span></span><i></i><span></span><i></i><span></span>
+        </div>
+        <p>船舶轴系测量</p>
+        <h1>让每一次顶升都有数据依据</h1>
+        <div class="login-facts">
+            <span>6 个测量点</span><span>压力 / 位移同步采集</span><span>顶升曲线分析</span>
+        </div>
+    </div>
+    <form class="login-card" method="post" th:action="@{/login}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <p class="product-kicker">轴系顶升称重测量系统</p>
+        <h2>登录控制台</h2>
+        <p class="login-error" th:if="${param.error}">用户名或密码错误</p>
+        <p class="login-success" th:if="${param.logout}">已安全退出</p>
+        <label>用户名<input name="username" autocomplete="username" required autofocus></label>
+        <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary wide" type="submit">登录</button>
+    </form>
+</section>
+</body>
+</html>
