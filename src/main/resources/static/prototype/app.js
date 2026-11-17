@@ -225,15 +225,16 @@ function selectedChannelState() {
 function syncCurrentRun() {
     const selected = selectedChannelState();
     const manualAction = ["ASCENDING", "DESCENDING", "MANUAL_QUICK_RELEASE"].includes(selected?.action);
+    const globalQuickRelease = controlState?.globalAction === "AUTO_QUICK_RELEASE";
     const subscriptionKey = selected?.runId ? `run:${selected.runId}`
-            : manualAction ? `point:${selected.pointCode}` : undefined;
+            : (manualAction || globalQuickRelease) ? `point:${selected.pointCode}` : undefined;
     if (!subscriptionKey) {
         realtimeEvents?.close();
         realtimeEvents = undefined;
         currentRun = undefined;
         return;
     }
-    const state = selected.paused ? "PAUSED" : "RUNNING";
+    const state = selected.paused || (globalQuickRelease && controlState.globalPaused) ? "PAUSED" : "RUNNING";
     if (currentRun?.subscriptionKey !== subscriptionKey) {
         currentRun = { runId: selected.runId, pointCode: selected.pointCode,
             subscriptionKey, state, processStage: "WAITING" };
@@ -609,7 +610,7 @@ function renderCurveTabs() {
 }
 
 function renderSampleTable(page) {
-    const rows = samples.map(row => `<tr><td>${row[0]}</td><td>${row[5].toFixed(2)}</td><td>${row[2].toFixed(2)}</td><td>${row[1].toFixed(1)}</td><td>${row[6].toFixed(2)}</td><td>${row[4].toFixed(2)}</td><td>${row[3].toFixed(1)}</td></tr>`).join("");
+    const rows = samples.map(row => `<tr><td>${row[0]}</td><td>${row[2].toFixed(2)}</td><td>${row[1].toFixed(1)}</td><td>${row[4].toFixed(2)}</td><td>${row[3].toFixed(1)}</td></tr>`).join("");
     q(page.bodySelector).innerHTML = rows;
 }
 
@@ -678,8 +679,7 @@ async function loadRunSamples(runId, page) {
     samples = Array.from({ length: size }, (_, index) => [
         index + 1,
         Number(lifting[index].forceKn), Number(lifting[index].displacementMm),
-        Number(lowering[index].forceKn), Number(lowering[index].displacementMm),
-        Number(lifting[index].pressureMpa), Number(lowering[index].pressureMpa)
+        Number(lowering[index].forceKn), Number(lowering[index].displacementMm)
     ]);
     curveMaximumDisplacement = Math.max(...raw.map(item => Number(item.displacementMm)));
     if (!(curveMaximumDisplacement > 0)) throw new Error("本次任务没有有效位移数据");

@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -92,7 +93,12 @@ public class ControlCommandService {
             case MANUAL_DISCONNECT -> disconnectMode(requirePointCode(request), ControlDto.ControlMode.MANUAL);
             case AUTO_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.AUTO);
             case AUTO_DISCONNECT -> disconnectMode(requirePointCode(request), ControlDto.ControlMode.AUTO);
-            case ZERO_DISPLACEMENT -> stateService.markZeroed(requirePointCode(request));
+            case ZERO_DISPLACEMENT -> {
+                String pointCode = requirePointCode(request);
+                stateService.markZeroed(pointCode);
+                // 无 PLC 联调时同步归零手动模拟传感器，确保后续动作从页面零点开始。
+                deviceSimulator.zeroManualSimulation(pointCode);
+            }
             case MANUAL_ENABLE -> stateService.startManual(requirePointCode(request));
             case MANUAL_ASCEND -> startManual(request, configId, ControlDto.ChannelAction.ASCENDING);
             case MANUAL_DESCEND -> startManual(request, configId, ControlDto.ChannelAction.DESCENDING);
@@ -102,7 +108,7 @@ public class ControlCommandService {
             case MANUAL_RESUME -> resumeManual(requirePointCode(request));
             case MANUAL_STOP -> stopManual(requirePointCode(request));
             case AUTO_TEST_START -> startAutoTest(request, configId, username);
-            case AUTO_QUICK_RELEASE -> stateService.connectAutoQuickRelease(requirePointCode(request));
+            case AUTO_QUICK_RELEASE -> startAutoQuickRelease(requirePointCode(request));
             case AUTO_PAUSE -> pauseAutomatic(requirePointCode(request), request.commandNo());
             case AUTO_RESUME -> resumeAutomatic(requirePointCode(request), request.commandNo());
             case AUTO_STOP -> stopAutomatic(requirePointCode(request));
@@ -233,8 +239,25 @@ public class ControlCommandService {
         return channel;
     }
 
+    /** 校验当前自动模式后，为全部启用通道启动不落库的自动快泄设备会话。 */
+    private void startAutoQuickRelease(String pointCode) {
+        List<String> pointCodes = pointMapper.selectList(Wrappers.<MeasurementPoint>lambdaQuery()
+                        .eq(MeasurementPoint::getEnabled, 1)
+                        .orderByAsc(MeasurementPoint::getSortNo))
+                .stream().map(MeasurementPoint::getPointCode).toList();
+        stateService.connectAutoQuickRelease(pointCode);
+        try {
+            deviceSimulator.startAutoQuickRelease(pointCodes);
+        } catch (RuntimeException exception) {
+            deviceSimulator.stopAutoQuickRelease();
+            stateService.disconnectAutoQuickRelease();
+            throw exception;
+        }
+    }
+
     private void pauseAutomatic(String pointCode, String commandNo) {
         if (stateService.snapshot().globalAction() == ControlDto.GlobalAction.AUTO_QUICK_RELEASE) {
+            deviceSimulator.pauseAutoQuickRelease();
             stateService.pauseAutoQuickRelease();
             return;
         }
@@ -245,6 +268,7 @@ public class ControlCommandService {
 
     private void resumeAutomatic(String pointCode, String commandNo) {
         if (stateService.snapshot().globalAction() == ControlDto.GlobalAction.AUTO_QUICK_RELEASE) {
+            deviceSimulator.resumeAutoQuickRelease();
             stateService.resumeAutoQuickRelease();
             return;
         }
@@ -255,6 +279,7 @@ public class ControlCommandService {
 
     private void stopAutomatic(String pointCode) {
         if (stateService.snapshot().globalAction() == ControlDto.GlobalAction.AUTO_QUICK_RELEASE) {
+            deviceSimulator.stopAutoQuickRelease();
             stateService.disconnectAutoQuickRelease();
             return;
         }

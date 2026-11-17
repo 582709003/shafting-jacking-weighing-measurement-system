@@ -55,8 +55,8 @@ class PhaseThreeIntegrationTest {
         jdbcTemplate.update("""
                 INSERT INTO measurement_sample
                     (run_id, point_id, stage, sequence_no, captured_at,
-                     pressure_mpa, force_kn, displacement_mm, raw_payload_json, valid)
-                VALUES (?, ?, 'LIFTING', 1, CURRENT_TIMESTAMP, 7.50, 50.0, 0.20, '{}', 1)
+                     force_kn, displacement_mm, raw_payload_json, valid)
+                VALUES (?, ?, 'LIFTING', 1, CURRENT_TIMESTAMP, 50.0, 0.20, '{}', 1)
                 """, runId, pointId);
         jdbcTemplate.update("""
                 INSERT INTO measurement_result

@@ -33,9 +33,6 @@ public class MeasurementSample {
     /** 采集时间。 */
     @TableField("captured_at")
     private Instant capturedAt;
-    /** 压力，单位 MPa。 */
-    @TableField("pressure_mpa")
-    private BigDecimal pressureMpa;
     /** 顶升力，单位 kN。 */
     @TableField("force_kn")
     private BigDecimal forceKn;
@@ -58,8 +55,6 @@ public class MeasurementSample {
     public void setSequenceNo(Long sequenceNo) { this.sequenceNo = sequenceNo; }
     public Instant getCapturedAt() { return capturedAt; }
     public void setCapturedAt(Instant capturedAt) { this.capturedAt = capturedAt; }
-    public BigDecimal getPressureMpa() { return pressureMpa; }
-    public void setPressureMpa(BigDecimal pressureMpa) { this.pressureMpa = pressureMpa; }
     public BigDecimal getForceKn() { return forceKn; }
     public void setForceKn(BigDecimal forceKn) { this.forceKn = forceKn; }
     public BigDecimal getDisplacementMm() { return displacementMm; }

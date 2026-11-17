@@ -97,9 +97,9 @@ class PhaseFourIntegrationTest {
     private void insert(long runId, long pointId, String stage, int sequence, String force, String displacement) {
         jdbcTemplate.update("""
                 INSERT INTO measurement_sample
-                    (run_id, point_id, stage, sequence_no, captured_at, pressure_mpa,
+                    (run_id, point_id, stage, sequence_no, captured_at,
                      force_kn, displacement_mm, raw_payload_json, valid)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 1, ?, ?, '{}', 1)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, '{}', 1)
                 """, runId, pointId, stage, sequence, force, displacement);
     }
 

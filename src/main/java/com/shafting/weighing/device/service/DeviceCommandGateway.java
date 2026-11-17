@@ -9,7 +9,8 @@ import java.time.Instant;
  * 自动测试状态机与现场设备之间的命令边界。
  *
  * <p>当前尚未提供 PLC 协议和传感器点位，因此各方法只保留调用位置；
- * 接入真实设备时在本类内实现下发与读取，不修改自动流程状态机。</p>
+ * 接入真实设备时在本类内实现下发与读取，不修改自动流程状态机。读取为空时，
+ * 手动流程可由设备模拟器生成联调数据，真实读数始终优先。</p>
  */
 @Component
 public class DeviceCommandGateway {
@@ -43,7 +44,7 @@ public class DeviceCommandGateway {
      * 同时读取指定通道的位移、称重和电机转速即时值。
      *
      * @param pointCode 测量点稳定编码
-     * @return 真实设备读数；尚未接入设备时返回空，手动操作不会自行生成读数
+     * @return 真实设备读数；尚未接入设备时返回空，由上层决定是否使用模拟读数
      */
     public SensorReading readSensorValues(String pointCode) {
         return null;

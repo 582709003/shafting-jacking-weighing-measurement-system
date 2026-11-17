@@ -49,28 +49,28 @@ VALUES
 -- 上升阶段：从零逐级顶升至 1.00 mm。
 INSERT INTO measurement_sample
     (run_id, point_id, stage, sequence_no, captured_at,
-     pressure_mpa, force_kn, displacement_mm, raw_payload_json, valid)
+     force_kn, displacement_mm, raw_payload_json, valid)
 VALUES
-    (@run_id, @point_id, 'LIFTING',  1, TIMESTAMPADD(SECOND,  0, @started_at),  0.00,   0.0, 0.00, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LIFTING',  2, TIMESTAMPADD(SECOND,  1, @started_at),  2.00,  20.0, 0.03, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LIFTING',  3, TIMESTAMPADD(SECOND,  2, @started_at),  4.00,  40.0, 0.07, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LIFTING',  4, TIMESTAMPADD(SECOND,  3, @started_at),  6.00,  60.0, 0.13, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LIFTING',  5, TIMESTAMPADD(SECOND,  4, @started_at),  8.00,  80.0, 0.24, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LIFTING',  6, TIMESTAMPADD(SECOND,  5, @started_at), 10.00, 100.0, 0.43, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LIFTING',  7, TIMESTAMPADD(SECOND,  6, @started_at), 12.00, 120.0, 0.68, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LIFTING',  8, TIMESTAMPADD(SECOND,  7, @started_at), 14.00, 140.0, 0.90, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LIFTING',  9, TIMESTAMPADD(SECOND,  8, @started_at), 15.00, 150.0, 1.00, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  1, TIMESTAMPADD(SECOND,  0, @started_at),   0.0, 0.00, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  2, TIMESTAMPADD(SECOND,  1, @started_at),  20.0, 0.03, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  3, TIMESTAMPADD(SECOND,  2, @started_at),  40.0, 0.07, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  4, TIMESTAMPADD(SECOND,  3, @started_at),  60.0, 0.13, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  5, TIMESTAMPADD(SECOND,  4, @started_at),  80.0, 0.24, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  6, TIMESTAMPADD(SECOND,  5, @started_at), 100.0, 0.43, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  7, TIMESTAMPADD(SECOND,  6, @started_at), 120.0, 0.68, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  8, TIMESTAMPADD(SECOND,  7, @started_at), 140.0, 0.90, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LIFTING',  9, TIMESTAMPADD(SECOND,  8, @started_at), 150.0, 1.00, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
 
 -- 下降阶段：从最高位移逐级卸载，最终力值和位移均回到零。
-    (@run_id, @point_id, 'LOWERING', 10, TIMESTAMPADD(SECOND,  9, @started_at), 14.50, 145.0, 1.00, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LOWERING', 11, TIMESTAMPADD(SECOND, 10, @started_at), 13.00, 130.0, 0.91, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LOWERING', 12, TIMESTAMPADD(SECOND, 11, @started_at), 11.50, 115.0, 0.72, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LOWERING', 13, TIMESTAMPADD(SECOND, 12, @started_at),  9.50,  95.0, 0.49, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LOWERING', 14, TIMESTAMPADD(SECOND, 13, @started_at),  7.50,  75.0, 0.29, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LOWERING', 15, TIMESTAMPADD(SECOND, 14, @started_at),  5.50,  55.0, 0.16, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LOWERING', 16, TIMESTAMPADD(SECOND, 15, @started_at),  3.50,  35.0, 0.08, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LOWERING', 17, TIMESTAMPADD(SECOND, 16, @started_at),  1.50,  15.0, 0.03, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
-    (@run_id, @point_id, 'LOWERING', 18, TIMESTAMPADD(SECOND, 17, @started_at),  0.00,   0.0, 0.00, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1);
+    (@run_id, @point_id, 'LOWERING', 10, TIMESTAMPADD(SECOND,  9, @started_at), 145.0, 1.00, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LOWERING', 11, TIMESTAMPADD(SECOND, 10, @started_at), 130.0, 0.91, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LOWERING', 12, TIMESTAMPADD(SECOND, 11, @started_at), 115.0, 0.72, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LOWERING', 13, TIMESTAMPADD(SECOND, 12, @started_at),  95.0, 0.49, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LOWERING', 14, TIMESTAMPADD(SECOND, 13, @started_at),  75.0, 0.29, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LOWERING', 15, TIMESTAMPADD(SECOND, 14, @started_at),  55.0, 0.16, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LOWERING', 16, TIMESTAMPADD(SECOND, 15, @started_at),  35.0, 0.08, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LOWERING', 17, TIMESTAMPADD(SECOND, 16, @started_at),  15.0, 0.03, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1),
+    (@run_id, @point_id, 'LOWERING', 18, TIMESTAMPADD(SECOND, 17, @started_at),   0.0, 0.00, '{"source":"DEMO_AUTOMATIC_FULL_PROCESS"}', 1);
 
 COMMIT;
 

@@ -15,4 +15,5 @@ spring:
 app:
   simulator:
     enabled: false
+    manual-enabled: false
 

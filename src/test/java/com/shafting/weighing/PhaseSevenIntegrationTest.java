@@ -66,8 +66,16 @@ class PhaseSevenIntegrationTest {
 
         mockMvc.perform(get("/api/runs/{runId}/samples", runId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].pressureMpa").value(2.50))
+                .andExpect(jsonPath("$[0].pressureMpa").doesNotExist())
+                .andExpect(jsonPath("$[0].forceKn").value(20.0))
                 .andExpect(jsonPath("$[0].displacementMm").value(0.02));
+
+        Integer pressureColumnCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE LOWER(TABLE_NAME) = 'measurement_sample'
+                  AND LOWER(COLUMN_NAME) = 'pressure_mpa'
+                """, Integer.class);
+        assertThat(pressureColumnCount).isZero();
 
         mockMvc.perform(get("/api/records/completed").param("pointCode", "INTERMEDIATE_1"))
                 .andExpect(status().isOk())
@@ -159,20 +167,20 @@ class PhaseSevenIntegrationTest {
         long runId = task.path("runId").asLong();
         Long pointId = jdbcTemplate.queryForObject(
                 "SELECT point_id FROM test_run WHERE id = ?", Long.class, runId);
-        insertSample(runId, pointId, "LIFTING", 1, "20.0", "2.50", "0.02");
-        insertSample(runId, pointId, "LIFTING", 2, "40.0", "5.00", "0.08");
-        insertSample(runId, pointId, "LOWERING", 3, "35.0", "4.50", "0.08");
-        insertSample(runId, pointId, "LOWERING", 4, "15.0", "2.00", "0.02");
+        insertSample(runId, pointId, "LIFTING", 1, "20.0", "0.02");
+        insertSample(runId, pointId, "LIFTING", 2, "40.0", "0.08");
+        insertSample(runId, pointId, "LOWERING", 3, "35.0", "0.08");
+        insertSample(runId, pointId, "LOWERING", 4, "15.0", "0.02");
         return runId;
     }
 
     private void insertSample(long runId, long pointId, String stage, int sequence,
-                              String force, String pressure, String displacement) {
+                              String force, String displacement) {
         jdbcTemplate.update("""
                 INSERT INTO measurement_sample
-                    (run_id, point_id, stage, sequence_no, captured_at, pressure_mpa,
+                    (run_id, point_id, stage, sequence_no, captured_at,
                      force_kn, displacement_mm, raw_payload_json, valid)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, '{}', 1)
-                """, runId, pointId, stage, sequence, pressure, force, displacement);
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, '{}', 1)
+                """, runId, pointId, stage, sequence, force, displacement);
     }
 }

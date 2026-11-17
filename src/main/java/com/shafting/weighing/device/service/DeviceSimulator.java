@@ -16,9 +16,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 /**
@@ -31,6 +35,8 @@ public class DeviceSimulator {
 
     private final Map<Long, AutomaticProcessSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, ManualSession> manualSessions = new ConcurrentHashMap<>();
+    private final Map<String, ManualSensorState> manualSensorStates = new ConcurrentHashMap<>();
+    private final Set<String> automaticQuickReleasePoints = ConcurrentHashMap.newKeySet();
     private final RealtimeStateStore realtimeStateStore;
     private final RealtimePublisher realtimePublisher;
     private final MeasurementSampleMapper sampleMapper;
@@ -105,21 +111,74 @@ public class DeviceSimulator {
     /**
      * 启动手动设备动作。
      *
-     * <p>手动操作不创建任务、不保存采样，也不生成模拟位移；上升期间只用设备实时位移
-     * 判断是否达到已保存的手动目标。</p>
+     * <p>手动操作不创建任务、不保存采样。存在真实设备读数时优先使用真实值；设备网关
+     * 暂未返回读数时，可使用手动模拟值联调页面，并按位移判断是否达到已保存目标。</p>
      */
     public void startManualAction(String pointCode, ControlDto.ChannelAction action,
                                   BigDecimal targetDisplacementMm) {
-        ManualSession session = new ManualSession(pointCode, action, targetDisplacementMm);
+        ManualSensorState sensor = manualSensorStates.computeIfAbsent(pointCode,
+                ignored -> new ManualSensorState());
+        ManualSession session = new ManualSession(pointCode, action, targetDisplacementMm,
+                sensor.displacementMm, sensor.forceKn, System.currentTimeMillis());
         manualSessions.put(pointCode, session);
         dispatchManual(session);
+    }
+
+    /** 清除指定通道的手动模拟传感器值；真实设备归零后接入时由设备网关替代。 */
+    public void zeroManualSimulation(String pointCode) {
+        manualSensorStates.put(pointCode, new ManualSensorState());
+    }
+
+    /** 启动六通道自动快泄模拟；复用通道实时流，不创建任务、运行或采样记录。 */
+    public void startAutoQuickRelease(List<String> pointCodes) {
+        pointCodes.forEach(pointCode -> {
+            automaticQuickReleasePoints.add(pointCode);
+            startManualAction(pointCode, ControlDto.ChannelAction.MANUAL_QUICK_RELEASE, null);
+        });
+    }
+
+    /** 暂停仍在快泄的通道，并保留各通道当前模拟值。 */
+    public void pauseAutoQuickRelease() {
+        automaticQuickReleasePoints.forEach(pointCode -> {
+            ManualSession session = manualSessions.get(pointCode);
+            if (session != null) {
+                synchronized (session) {
+                    session.pause(System.currentTimeMillis());
+                    deviceCommandGateway.sendPause(pointCode);
+                }
+            }
+        });
+    }
+
+    /** 从暂停位置恢复六通道自动快泄。 */
+    public void resumeAutoQuickRelease() {
+        automaticQuickReleasePoints.forEach(pointCode -> {
+            ManualSession session = manualSessions.get(pointCode);
+            if (session != null) {
+                synchronized (session) {
+                    session.resume(System.currentTimeMillis());
+                    dispatchManual(session);
+                }
+            }
+        });
+    }
+
+    /** 停止全部自动快泄会话，保留停止时的模拟传感器值。 */
+    public void stopAutoQuickRelease() {
+        List.copyOf(automaticQuickReleasePoints).forEach(pointCode -> {
+            ManualSession session = manualSessions.remove(pointCode);
+            if (session != null) {
+                deviceCommandGateway.sendStop(pointCode);
+            }
+            automaticQuickReleasePoints.remove(pointCode);
+        });
     }
 
     /** 暂停当前通道的手动动作，并保留原动作供继续操作。 */
     public void pauseManual(String pointCode) {
         ManualSession session = requireManualSession(pointCode);
         synchronized (session) {
-            session.paused = true;
+            session.pause(System.currentTimeMillis());
             deviceCommandGateway.sendPause(pointCode);
         }
     }
@@ -128,7 +187,7 @@ public class DeviceSimulator {
     public void resumeManual(String pointCode) {
         ManualSession session = requireManualSession(pointCode);
         synchronized (session) {
-            session.paused = false;
+            session.resume(System.currentTimeMillis());
             dispatchManual(session);
         }
     }
@@ -141,10 +200,11 @@ public class DeviceSimulator {
         }
     }
 
-    /** 报警联锁时停止全部手动动作；手动操作没有可更新的数据库运行记录。 */
+    /** 报警联锁时停止全部无运行记录的设备动作，包括手动动作和自动快泄。 */
     public void stopAllManual() {
         manualSessions.keySet().forEach(deviceCommandGateway::sendStop);
         manualSessions.clear();
+        automaticQuickReleasePoints.clear();
     }
 
     /**
@@ -163,6 +223,7 @@ public class DeviceSimulator {
                     AutomaticStep step = session.advance(System.currentTimeMillis(), reading);
                     dispatch(session.pointCode(), step.deviceAction());
                     RealtimeSnapshot snapshot = session.snapshot(runId, session.state());
+                    rememberSensorState(session.pointCode(), snapshot.displacementMm(), snapshot.forceKn());
                     publishAutomatic(snapshot);
                     updateProcessStage(runId, snapshot.processStage());
                     if (step.sampleStage() != null) {
@@ -176,7 +237,7 @@ public class DeviceSimulator {
                 }
             });
         }
-        // 手动动作不依赖软件模拟开关，只读取真实设备值做目标位移安全兜底。
+        // 手动动作始终优先读取真实设备；网关暂无数据时才按配置启用页面联调模拟值。
         manualSessions.forEach(this::tickManual);
     }
 
@@ -184,22 +245,71 @@ public class DeviceSimulator {
     private void tickManual(String pointCode, ManualSession session) {
         synchronized (session) {
             SensorReading reading = deviceCommandGateway.readSensorValues(pointCode);
+            if (reading == null && properties.isManualEnabled()) {
+                reading = simulateManualReading(session, System.currentTimeMillis());
+            }
             if (reading == null) {
                 return;
             }
+            rememberSensorState(pointCode, reading.displacementMm(), reading.forceKn());
             boolean targetReached = !session.paused
                     && session.action == ControlDto.ChannelAction.ASCENDING
                     && reading.displacementMm().compareTo(session.targetDisplacementMm) >= 0;
-            if (targetReached) {
+            boolean returnedToZero = !session.paused
+                    && session.action != ControlDto.ChannelAction.ASCENDING
+                    && reading.forceKn().signum() <= 0;
+            if (targetReached || returnedToZero) {
                 // 先停止设备，再更新页面状态，避免界面显示停止但设备仍继续顶升。
                 deviceCommandGateway.sendStop(pointCode);
                 manualSessions.remove(pointCode, session);
                 realtimePublisher.publish(manualSnapshot(session, reading, "STOPPED"));
-                controlStateService.finishAction(pointCode, null);
+                if (!automaticQuickReleasePoints.remove(pointCode)) {
+                    controlStateService.finishAction(pointCode, null);
+                }
                 return;
             }
             realtimePublisher.publish(manualSnapshot(session, reading, session.paused ? "PAUSED" : "RUNNING"));
         }
+    }
+
+    /**
+     * 按动作实际经过时间生成手动联调读数，不依赖调度周期次数。
+     * 上升使用 lifting-ms，下降使用 lowering-ms，快泄使用三分之一下降时长。
+     */
+    private SensorReading simulateManualReading(ManualSession session, long nowMillis) {
+        long durationMillis = session.action == ControlDto.ChannelAction.ASCENDING
+                ? properties.getLiftingMs()
+                : session.action == ControlDto.ChannelAction.MANUAL_QUICK_RELEASE
+                ? Math.max(1L, properties.getLoweringMs() / 3L)
+                : properties.getLoweringMs();
+        double ratio = Math.min(1D, session.activeElapsed(nowMillis) / (double) Math.max(1L, durationMillis));
+        BigDecimal progress = BigDecimal.valueOf(ratio);
+        BigDecimal displacement;
+        BigDecimal force;
+        if (session.action == ControlDto.ChannelAction.ASCENDING) {
+            BigDecimal target = session.targetDisplacementMm.max(session.initialDisplacementMm);
+            displacement = interpolate(session.initialDisplacementMm, target, progress);
+            BigDecimal peakForce = properties.getFallbackForceKn().max(session.initialForceKn);
+            force = interpolate(session.initialForceKn, peakForce, progress);
+        } else {
+            BigDecimal remaining = BigDecimal.ONE.subtract(progress);
+            displacement = session.initialDisplacementMm.multiply(remaining);
+            force = session.initialForceKn.multiply(remaining);
+        }
+        return new SensorReading(displacement.setScale(2, RoundingMode.HALF_UP),
+                force.setScale(1, RoundingMode.HALF_UP),
+                session.paused ? 0 : properties.getManualMotorRpm(), Instant.ofEpochMilli(nowMillis));
+    }
+
+    private BigDecimal interpolate(BigDecimal start, BigDecimal end, BigDecimal progress) {
+        return start.add(end.subtract(start).multiply(progress));
+    }
+
+    private void rememberSensorState(String pointCode, BigDecimal displacementMm, BigDecimal forceKn) {
+        ManualSensorState sensor = manualSensorStates.computeIfAbsent(pointCode,
+                ignored -> new ManualSensorState());
+        sensor.displacementMm = displacementMm;
+        sensor.forceKn = forceKn;
     }
 
     private RealtimeSnapshot manualSnapshot(ManualSession session, SensorReading reading, String state) {
@@ -229,7 +339,6 @@ public class DeviceSimulator {
         sample.setStage(sampleStage);
         sample.setSequenceNo(session.nextSequence());
         sample.setCapturedAt(snapshot.capturedAt());
-        sample.setPressureMpa(snapshot.pressureMpa());
         sample.setForceKn(snapshot.forceKn());
         sample.setDisplacementMm(snapshot.displacementMm());
         sample.setRawPayloadJson(deviceReading
@@ -314,13 +423,45 @@ public class DeviceSimulator {
         private final String pointCode;
         private final ControlDto.ChannelAction action;
         private final BigDecimal targetDisplacementMm;
+        private final BigDecimal initialDisplacementMm;
+        private final BigDecimal initialForceKn;
+        private final long startedAtMillis;
         private boolean paused;
+        private long pausedAtMillis;
+        private long accumulatedPauseMillis;
 
         private ManualSession(String pointCode, ControlDto.ChannelAction action,
-                              BigDecimal targetDisplacementMm) {
+                              BigDecimal targetDisplacementMm, BigDecimal initialDisplacementMm,
+                              BigDecimal initialForceKn, long startedAtMillis) {
             this.pointCode = pointCode;
             this.action = action;
             this.targetDisplacementMm = targetDisplacementMm;
+            this.initialDisplacementMm = initialDisplacementMm;
+            this.initialForceKn = initialForceKn;
+            this.startedAtMillis = startedAtMillis;
         }
+
+        private void pause(long nowMillis) {
+            paused = true;
+            pausedAtMillis = nowMillis;
+        }
+
+        private void resume(long nowMillis) {
+            accumulatedPauseMillis += Math.max(0L, nowMillis - pausedAtMillis);
+            paused = false;
+            pausedAtMillis = 0L;
+        }
+
+        private long activeElapsed(long nowMillis) {
+            long effectiveNow = paused ? pausedAtMillis : nowMillis;
+            return Math.max(0L, effectiveNow - startedAtMillis - accumulatedPauseMillis);
+        }
+    }
+
+    /** 跨手动动作保留同一通道模拟传感器值，使上升后可继续下降或快泄。 */
+    private static final class ManualSensorState {
+
+        private BigDecimal displacementMm = BigDecimal.ZERO.setScale(2);
+        private BigDecimal forceKn = BigDecimal.ZERO.setScale(1);
     }
 }

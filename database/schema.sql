@@ -131,7 +131,6 @@ CREATE TABLE IF NOT EXISTS measurement_sample (
     stage VARCHAR(24) NOT NULL,
     sequence_no BIGINT NOT NULL,
     captured_at TIMESTAMP(3) NOT NULL,
-    pressure_mpa DECIMAL(10, 2) NOT NULL,
     force_kn DECIMAL(12, 1) NOT NULL,
     displacement_mm DECIMAL(10, 2) NOT NULL,
     raw_payload_json TEXT,

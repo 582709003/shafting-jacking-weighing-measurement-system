@@ -74,7 +74,7 @@ assert.ok(html.includes('id="adjustmentCoefficientCard" hidden')
         && html.includes("调整系数 · 仅管理员"), "调整系数必须默认隐藏并明确仅管理员可见");
 assert.ok(js.includes('/result/adjustment-coefficient') && js.includes('method: "PATCH"'),
         "管理员调整系数修改接口未接入");
-assert.ok(html.includes("上升压力") && html.includes("下降压力"), "曲线页表格应展示保存后的压力原始采样");
+assert.ok(!html.includes("上升压力") && !html.includes("下降压力"), "曲线页表格不应重复展示压力数据");
 assert.ok(html.includes('id="shaftCurveTaskSelect"') && html.includes('id="mainCurveTaskSelect"'), "两个曲线页均应提供已完成测量任务下拉框");
 assert.ok(js.includes('/api/records/completed?pointCode='), "曲线页应按通道读取已完成测量任务");
 assert.ok(js.includes('/api/runs/${runId}/curve-fit') && js.includes('container.setFitState = fit =>'),

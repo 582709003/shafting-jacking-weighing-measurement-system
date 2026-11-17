@@ -24,6 +24,7 @@ assert.match(script, /\/manual-target/);
 assert.match(script, /const canEditManualTarget = sessionContext\.roles\.some\(role => \["ADMIN", "ENGINEER"\]\.includes\(role\)\)/);
 assert.match(script, /MANUAL_PAUSE/);
 assert.match(script, /\/api\/points\/\$\{selected\.pointCode\}\/events/);
+assert.match(script, /function syncCurrentRun\(\)[\s\S]*?\(manualAction \|\| globalQuickRelease\)[\s\S]*?subscribeRealtime/);
 assert.doesNotMatch(script, /manualStopButton"\)\.disabled[^;]+channel\.runId/);
 assert.doesNotMatch(script, /target <= Number\(config\?\.maxDisplacement\)/);
 assert.match(script, /AUTO_QUICK_RELEASE/);

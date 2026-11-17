@@ -31,8 +31,10 @@ app:
     admin-password: ${ADMIN_INITIAL_PASSWORD:Admin@123}
   simulator:
     enabled: ${SIMULATOR_ENABLED:true}
+    manual-enabled: ${MANUAL_SIMULATOR_ENABLED:true}
     interval-ms: ${SIMULATOR_INTERVAL_MS:500}
     precheck-ms: ${SIMULATOR_PRECHECK_MS:1000}
     lifting-ms: ${SIMULATOR_LIFTING_MS:8000}
     lowering-ms: ${SIMULATOR_LOWERING_MS:8000}
     fallback-force-kn: ${SIMULATOR_FALLBACK_FORCE_KN:180.0}
+    manual-motor-rpm: ${MANUAL_SIMULATOR_MOTOR_RPM:800}

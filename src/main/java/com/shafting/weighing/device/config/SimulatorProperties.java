@@ -12,6 +12,8 @@ public class SimulatorProperties {
 
     /** 是否启用定时模拟。测试环境关闭。 */
     private boolean enabled = true;
+    /** 无真实传感器读数时是否生成手动动作实时值。 */
+    private boolean manualEnabled = true;
     /** 采样和推送周期，单位毫秒。 */
     private long intervalMs = 500;
     /** 启动检查阶段时长，单位毫秒。 */
@@ -24,6 +26,8 @@ public class SimulatorProperties {
     private BigDecimal fallbackForceKn = new BigDecimal("180.0");
     /** 仅用于生成模拟压力采样的峰值，单位 MPa，不作为业务停止条件。 */
     private BigDecimal fallbackPressureMpa = new BigDecimal("15.00");
+    /** 手动设备模拟动作期间显示的电机转速，单位 r/min。 */
+    private int manualMotorRpm = 800;
 
     public boolean isEnabled() {
         return enabled;
@@ -31,6 +35,14 @@ public class SimulatorProperties {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isManualEnabled() {
+        return manualEnabled;
+    }
+
+    public void setManualEnabled(boolean manualEnabled) {
+        this.manualEnabled = manualEnabled;
     }
 
     public long getIntervalMs() {
@@ -79,5 +91,13 @@ public class SimulatorProperties {
 
     public void setFallbackPressureMpa(BigDecimal fallbackPressureMpa) {
         this.fallbackPressureMpa = fallbackPressureMpa;
+    }
+
+    public int getManualMotorRpm() {
+        return manualMotorRpm;
+    }
+
+    public void setManualMotorRpm(int manualMotorRpm) {
+        this.manualMotorRpm = manualMotorRpm;
     }
 }
