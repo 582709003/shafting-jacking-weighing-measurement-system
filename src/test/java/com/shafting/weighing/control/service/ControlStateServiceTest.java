@@ -129,4 +129,15 @@ class ControlStateServiceTest {
         service.connectMode("TAIL_SHAFT", ControlDto.ControlMode.MANUAL);
         assertThat(service.channel("TAIL_SHAFT").mode()).isEqualTo(ControlDto.ControlMode.MANUAL);
     }
+
+    @Test
+    void shouldIgnoreOrdinaryPlcFeedbackWhileAlarmIsLocked() {
+        service.alarmStop();
+
+        service.synchronizePlcFeedback("TAIL_SHAFT", 1, 2, 1);
+
+        assertThat(service.snapshot().alarmLocked()).isTrue();
+        assertThat(service.channel("TAIL_SHAFT").mode()).isEqualTo(ControlDto.ControlMode.OFF);
+        assertThat(service.channel("TAIL_SHAFT").action()).isEqualTo(ControlDto.ChannelAction.IDLE);
+    }
 }

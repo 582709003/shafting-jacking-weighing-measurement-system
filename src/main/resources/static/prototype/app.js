@@ -7,7 +7,7 @@ const parameterRows = [
     ["顶升系数", "", "jackingCoefficient", "0.0001"],
     ["自动目标位移", "mm", "maxDisplacement", "0.01"],
     ["顶升速度", "r/min", "motorRpm", "1"],
-    ["力值间隔", "kN", "forceIntervalKn", "0.001"],
+    ["力值间隔", "kN", "forceIntervalKn", "1"],
     ["时间间隔", "s", "holdSeconds", "1"]
 ];
 let samples = [];
@@ -25,17 +25,22 @@ let currentValueResult;
 let activeResultPointCode = pointCodes[0];
 let realtimeEvents;
 let recordRows = [];
+const RECORD_PAGE_SIZE = 10;
+let recordPage = 1;
+let recordTotalPages = 1;
+let recordSearchTimer;
 let controlState;
 let configByPoint = new Map();
 let controlErrorMessage = "";
 let controlErrorUntil = 0;
+let controlCommandPending = false;
 let manualTargetDirty = false;
 let settingsSaving = false;
 const curveTasksBySelect = new Map();
 const curvePages = {
     shaftCurveTabs: {
         selectId: "shaftCurveTaskSelect", metaId: "shaftCurveTaskMeta", chartId: "shaftCurveChart",
-        tableTitleId: "curveTableTitle", bodySelector: "#curveDataBody"
+        tableTitleId: "curveTableTitle", bodySelector: "#curveDataBody", exportButtonId: "exportCurveCsvButton"
     },
     mainCurveTabs: {
         selectId: "mainCurveTaskSelect", metaId: "mainCurveTaskMeta", chartId: "mainCurveChart",
@@ -77,10 +82,10 @@ function renderSettingsForm() {
     const channelIndex = pointCodes.indexOf(activeSettingsPointCode);
     const point = configByPoint.get(activeSettingsPointCode) || {};
     const defaults = { standardForce: 0, totalValue: 0, jackingCoefficient: 1,
-        maxDisplacement: 0, motorRpm: 0, forceIntervalKn: 0.5, holdSeconds: 0 };
+        maxDisplacement: 0, motorRpm: 0, forceIntervalKn: 1, holdSeconds: 0 };
     form.innerHTML = `<div class="settings-form-head"><div><p>当前通道</p><h2>${channels[channelIndex]}</h2></div><span>单通道新增或更新</span></div>
         <div class="settings-field-grid">${parameterRows.map(([name, unit, field, step]) => `
-            <label class="settings-field"><span>${name}</span><div><input type="number" min="0" step="${step}" data-field="${field}" aria-label="${channels[channelIndex]}${name}" value="${point[field] ?? defaults[field]}" required><small>${unit}</small></div></label>`).join("")}</div>`;
+            <label class="settings-field"><span>${name}</span><div><input type="number" min="${field === "forceIntervalKn" ? 1 : step}" step="${step}" data-field="${field}" aria-label="${channels[channelIndex]}${name}" value="${point[field] ?? defaults[field]}" required><small>${unit}</small></div></label>`).join("")}</div>`;
     const canEdit = sessionContext?.roles.some(role => role === "ADMIN" || role === "ENGINEER");
     qa("input", form).forEach(input => input.disabled = !canEdit);
 }
@@ -133,7 +138,18 @@ async function saveSettingsConfig() {
             showSettingsNotice("error", `${channel}${name}不能为空。`);
             return;
         }
-        point[field] = Number(input.value);
+        const value = Number(input.value);
+        if (!Number.isFinite(value) || value <= 0) {
+            input.focus();
+            showSettingsNotice("error", `${channel}${name}必须大于 0。`);
+            return;
+        }
+        if (field === "forceIntervalKn" && (!Number.isInteger(value) || value > 32767)) {
+            input.focus();
+            showSettingsNotice("error", `${channel}力值间隔必须是 1～32767 kN 的整数。`);
+            return;
+        }
+        point[field] = value;
     }
     settingsSaving = true;
     saveButton.disabled = true;
@@ -185,29 +201,36 @@ async function saveManualTarget() {
 }
 
 async function sendControlCommand(commandType, options = {}) {
-    const commandNo = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-    const response = await fetch("/api/control/commands", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            [sessionContext.csrfHeaderName]: sessionContext.csrfToken
-        },
-        body: JSON.stringify({
-            commandNo,
-            commandType,
-            pointCode: options.global ? null : activePointCode,
-            targetDisplacementMm: options.targetDisplacementMm ?? null,
-            configId: 1
-        })
-    });
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || error.message || `控制命令执行失败（${response.status}）`);
-    }
-    controlState = await response.json();
-    syncCurrentRun();
+    if (controlCommandPending) return controlState;
+    controlCommandPending = true;
     renderControlState();
-    return controlState;
+    const commandNo = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    try {
+        const response = await fetch("/api/control/commands", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                [sessionContext.csrfHeaderName]: sessionContext.csrfToken
+            },
+            body: JSON.stringify({
+                commandNo,
+                commandType,
+                pointCode: options.global ? null : activePointCode,
+                targetDisplacementMm: options.targetDisplacementMm ?? null,
+                configId: 1
+            })
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || error.message || `控制命令执行失败（${response.status}）`);
+        }
+        controlState = await response.json();
+        syncCurrentRun();
+        return controlState;
+    } finally {
+        controlCommandPending = false;
+        renderControlState();
+    }
 }
 
 async function loadControlState() {
@@ -224,16 +247,8 @@ function selectedChannelState() {
 
 function syncCurrentRun() {
     const selected = selectedChannelState();
-    const manualAction = ["ASCENDING", "DESCENDING", "MANUAL_QUICK_RELEASE"].includes(selected?.action);
     const globalQuickRelease = controlState?.globalAction === "AUTO_QUICK_RELEASE";
-    const subscriptionKey = selected?.runId ? `run:${selected.runId}`
-            : (manualAction || globalQuickRelease) ? `point:${selected.pointCode}` : undefined;
-    if (!subscriptionKey) {
-        realtimeEvents?.close();
-        realtimeEvents = undefined;
-        currentRun = undefined;
-        return;
-    }
+    const subscriptionKey = selected?.runId ? `run:${selected.runId}` : `point:${selected.pointCode}`;
     const state = selected.paused || (globalQuickRelease && controlState.globalPaused) ? "PAUSED" : "RUNNING";
     if (currentRun?.subscriptionKey !== subscriptionKey) {
         currentRun = { runId: selected.runId, pointCode: selected.pointCode,
@@ -379,11 +394,16 @@ function renderControlState() {
         node.classList.toggle("flowing", flowing);
     });
     q("#runStateLabel").textContent = Date.now() < controlErrorUntil ? controlErrorMessage
+            : controlCommandPending ? "指令下发中，请等待 PLC 确认"
             : controlState.alarmLocked ? "报警锁定：请关闭全部报警后重新启用"
             : globalQuickRelease ? (globalPaused ? "六通道自动快泄已暂停" : "六通道自动快泄中")
             : channel.action !== "IDLE" ? (channel.paused ? `${actionName(channel.action)} · 已暂停` : actionName(channel.action))
             : channel.zeroed ? "位移已清零，等待启动" : `${modeName(channel.mode)} · 就绪`;
     q("#runStateLabel").classList.toggle("live", anyAction || globalQuickRelease);
+    if (controlCommandPending) {
+        qa("#workChannelStrip button, #zeroDisplacementButton, .control-panel button")
+                .forEach(button => button.disabled = true);
+    }
     renderChannelLimits();
 }
 
@@ -441,11 +461,7 @@ async function loadCompletedValueTasks(button) {
     const response = await fetch(`/api/records/completed?pointCode=${encodeURIComponent(activeResultPointCode)}`);
     if (!response.ok) throw new Error(await responseError(response, "读取已完成测量任务失败"));
     const tasks = await response.json();
-    const select = q("#valueTaskSelect");
-    curveTasksBySelect.set("valueTaskSelect", tasks);
-    select.disabled = tasks.length === 0;
-    select.innerHTML = `<option value="">${tasks.length ? "请选择测量任务" : "该通道暂无已完成任务"}</option>`
-            + tasks.map(task => `<option value="${task.runId}">${escapeHtml(task.taskName)}｜${escapeHtml(task.taskNo)}｜${formatCurveTaskTime(task.completedAt)}</option>`).join("");
+    setTaskOptions("valueTaskSelect", tasks);
     button.querySelector("small").textContent = tasks.length ? `${tasks.length} 条已完成` : "暂无完整测量";
     q("#valueTaskMeta").textContent = tasks.length
             ? `共 ${tasks.length} 条，按完成时间从新到旧排列` : "需完整执行上升和下降流程后才会出现在这里";
@@ -563,6 +579,7 @@ function renderChannelSelectors() {
             q("#activeChannelLabel").textContent = channel;
             q(".readings-panel h2").textContent = `${channel}实时数据`;
             qa(".shaft-node", shaftVisual).forEach((item, itemIndex) => item.classList.toggle("active", itemIndex === index));
+            syncCurrentRun();
             renderControlState();
             renderChannelLimits();
         });
@@ -609,9 +626,62 @@ function renderCurveTabs() {
     render(q("#mainCurveTabs"), ["1#", "2#"]);
 }
 
+function taskOptionLabel(task) {
+    return `${task.taskName}｜${task.taskNo}｜${formatCurveTaskTime(task.completedAt)}`;
+}
+
+function taskSearchText(task) {
+    return taskOptionLabel(task).toLocaleLowerCase("zh-CN");
+}
+
+function filterTaskOptions(selectId, keyword) {
+    const select = q(`#${selectId}`);
+    const tasks = curveTasksBySelect.get(selectId) || [];
+    const normalizedKeyword = keyword.trim().toLocaleLowerCase("zh-CN");
+    const matches = normalizedKeyword
+            ? tasks.filter(task => taskSearchText(task).includes(normalizedKeyword)) : tasks;
+    const selectedRunId = select.value;
+    const placeholder = tasks.length === 0 ? "该通道暂无已完成任务"
+            : matches.length === 0 ? "未找到匹配任务" : "请选择测量任务";
+    select.disabled = matches.length === 0;
+    select.innerHTML = `<option value="">${placeholder}</option>`
+            + matches.map(task => `<option value="${task.runId}">${escapeHtml(taskOptionLabel(task))}</option>`).join("");
+    if (matches.some(task => String(task.runId) === selectedRunId)) {
+        select.value = selectedRunId;
+    } else if (selectedRunId) {
+        select.dispatchEvent(new Event("change"));
+    }
+}
+
+function setTaskOptions(selectId, tasks) {
+    curveTasksBySelect.set(selectId, tasks);
+    const input = q(`[data-task-search="${selectId}"]`);
+    input.value = "";
+    input.disabled = tasks.length === 0;
+    filterTaskOptions(selectId, "");
+}
+
+function bindTaskSearch() {
+    qa("[data-task-search]").forEach(input => input.addEventListener("input", () =>
+        filterTaskOptions(input.dataset.taskSearch, input.value)));
+}
+
 function renderSampleTable(page) {
     const rows = samples.map(row => `<tr><td>${row[0]}</td><td>${row[2].toFixed(2)}</td><td>${row[1].toFixed(1)}</td><td>${row[4].toFixed(2)}</td><td>${row[3].toFixed(1)}</td></tr>`).join("");
     q(page.bodySelector).innerHTML = rows;
+}
+
+function exportCurveCsv() {
+    if (!currentCurveRun || samples.length === 0) return;
+    const rows = samples.map(row => [row[0], row[2].toFixed(2), row[1].toFixed(1),
+        row[4].toFixed(2), row[3].toFixed(1)].join(","));
+    const csv = ["序号,上升位移(mm),上升力(kN),下降位移(mm),下降力(kN)", ...rows].join("\r\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${String(currentCurveRun.taskNo).replace(/[\\/:*?"<>|]/g, "_")}-升降数据.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
 }
 
 async function loadCompletedCurveTasks(pointCode, page, button) {
@@ -619,11 +689,8 @@ async function loadCompletedCurveTasks(pointCode, page, button) {
     if (!response.ok) throw new Error(await responseError(response, "读取已完成测量任务失败"));
     const tasks = await response.json();
     const select = q(`#${page.selectId}`);
-    curveTasksBySelect.set(page.selectId, tasks);
     select.dataset.pointCode = pointCode;
-    select.disabled = tasks.length === 0;
-    select.innerHTML = `<option value="">${tasks.length ? "请选择测量任务" : "该通道暂无已完成任务"}</option>`
-            + tasks.map(task => `<option value="${task.runId}">${escapeHtml(task.taskName)}｜${escapeHtml(task.taskNo)}｜${formatCurveTaskTime(task.completedAt)}</option>`).join("");
+    setTaskOptions(page.selectId, tasks);
     button.querySelector("strong").textContent = String(tasks.length);
     button.querySelector("small").textContent = tasks.length ? "条已完成任务" : "暂无完整测量";
     q(`#${page.metaId}`).textContent = tasks.length
@@ -652,6 +719,7 @@ async function loadSavedCurveFit(runId, chartId) {
 
 function showCurveLoadError(error, page) {
     currentCurveRun = undefined;
+    if (page.exportButtonId) q(`#${page.exportButtonId}`).disabled = true;
     const emptyRow = `<tr><td colspan="7">${escapeHtml(error.message)}</td></tr>`;
     q(page.bodySelector).innerHTML = emptyRow;
     q(`#${page.chartId}`).innerHTML = `<div class="curve-empty">${escapeHtml(error.message)}</div>`;
@@ -662,6 +730,7 @@ function clearCurvePage(page, message) {
     currentCurveRun = undefined;
     samples = [];
     curveMaximumDisplacement = 0;
+    if (page.exportButtonId) q(`#${page.exportButtonId}`).disabled = true;
     q(page.bodySelector).innerHTML = `<tr><td colspan="7">${escapeHtml(message)}</td></tr>`;
     q(`#${page.chartId}`).innerHTML = `<div class="curve-empty">${escapeHtml(message)}</div>`;
     const panel = q(`#${page.chartId}`).closest(".chart-panel");
@@ -684,6 +753,7 @@ async function loadRunSamples(runId, page) {
     curveMaximumDisplacement = Math.max(...raw.map(item => Number(item.displacementMm)));
     if (!(curveMaximumDisplacement > 0)) throw new Error("本次任务没有有效位移数据");
     renderSampleTable(page);
+    if (page.exportButtonId) q(`#${page.exportButtonId}`).disabled = false;
     rebuildCurveChart(page.chartId);
 }
 
@@ -710,7 +780,8 @@ function createCurveChart(container) {
     const plot = { left: 64, top: 20, width: 620, height: 330 };
     const maxX = 200;
     const maximumDisplacement = curveMaximumDisplacement;
-    const maxY = Math.max(0.05, Math.ceil(maximumDisplacement * 20) / 20);
+    // 纵轴预留 20% 上方空间，保证自动生成在最高采样位移处的上端点仍可向上调整。
+    const maxY = Math.max(0.05, Math.ceil(maximumDisplacement * 1.2 * 20) / 20);
     const defaults = {
         down: CurveMath.anchorSegment(CurveMath.findMaxSlopeSegment(samples, 3, 4), maximumDisplacement),
         up: CurveMath.anchorSegment(CurveMath.findMaxSlopeSegment(samples, 1, 2), maximumDisplacement)
@@ -723,6 +794,8 @@ function createCurveChart(container) {
     const xPixel = value => plot.left + value / maxX * plot.width;
     const yPixel = value => plot.top + plot.height - value / maxY * plot.height;
     const xValue = pixel => Math.max(0, Math.min(maxX, (pixel - plot.left) / plot.width * maxX));
+    const yValue = pixel => CurveMath.quantizeDisplacement(Math.max(0.01,
+            Math.min(maxY, (plot.top + plot.height - pixel) / plot.height * maxY)));
 
     const grid = svgElement("g", { stroke: "#dfe6eb", "stroke-width": "1" });
     for (let i = 0; i <= 10; i++) {
@@ -772,7 +845,7 @@ function createCurveChart(container) {
         state[kind].forEach((point, index) => {
             const endpointName = index === 0 ? "横轴端点" : "最高位移端点";
             const handle = svgElement("circle", { r: 8, fill: "#fff", stroke: colors[kind], "stroke-width": "4", tabindex: canEditCurve ? "0" : "-1", role: "slider", "aria-disabled": String(!canEditCurve), "aria-label": `${kind === "up" ? "上升" : "下降"}拟合线${endpointName}` });
-            handle.style.cursor = canEditCurve ? "ew-resize" : "not-allowed";
+            handle.style.cursor = canEditCurve ? (index === 0 ? "ew-resize" : "move") : "not-allowed";
             handle.addEventListener("pointerdown", event => {
                 if (!canEditCurve) return;
                 handle.setPointerCapture(event.pointerId);
@@ -781,8 +854,10 @@ function createCurveChart(container) {
                 if (!handle.hasPointerCapture(event.pointerId)) return;
                 const rect = svg.getBoundingClientRect();
                 const pixelX = (event.clientX - rect.left) * width / rect.width;
-                // 两个端点的纵坐标分别锁定为 0 和本次最高位移，只允许左右修正力值。
-                state[kind][index] = [xValue(pixelX), state[kind][index][1]];
+                const pixelY = (event.clientY - rect.top) * height / rect.height;
+                // 下端点保持在横轴；上升、下降拟合线的上端点可在图内上下左右调整。
+                state[kind][index] = [xValue(pixelX),
+                    index === 0 ? state[kind][index][1] : yValue(pixelY)];
                 update();
             });
             handle.addEventListener("pointerup", event => {
@@ -919,15 +994,26 @@ async function loadCurrentResult() {
     await loadCompletedValueTasks(q("#valueChannelStrip button.active"));
 }
 
-async function loadRecords() {
-    const response = await fetch("/api/records");
+async function loadRecords(page = 1) {
+    const keyword = q("#recordSearch").value.trim();
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("size", String(RECORD_PAGE_SIZE));
+    params.set("keyword", keyword);
+    const response = await fetch(`/api/records?${params}`);
     if (!response.ok) throw new Error("读取测量记录失败");
-    recordRows = await response.json();
+    const result = await response.json();
+    recordRows = result.records;
+    recordPage = result.page;
+    recordTotalPages = result.totalPages;
+    q("#recordCount").textContent = `${result.total} 条任务`;
+    q("#recordPageInfo").textContent = `第 ${recordPage} / ${recordTotalPages} 页 · 每页 ${result.pageSize} 条`;
+    q("#recordPreviousPage").disabled = recordPage <= 1;
+    q("#recordNextPage").disabled = recordPage >= recordTotalPages;
     renderRecords(recordRows);
 }
 
 function renderRecords(rows) {
-    q("#recordCount").textContent = `${rows.length} 条任务`;
     q("#recordTableBody").innerHTML = rows.map(row => `<tr>
         <td>${escapeHtml(row.taskNo)}</td><td>${escapeHtml(row.taskName)}</td>
         <td>${escapeHtml(row.pointName)}</td>
@@ -1063,10 +1149,13 @@ function setupAuthenticatedActions() {
     q("#saveAdjustmentCoefficientButton").addEventListener("click", () => saveAdjustmentCoefficient()
             .catch(showValueResultError));
     q("#exportRecordsButton").addEventListener("click", () => { location.href = "/api/records/export"; });
+    q("#exportCurveCsvButton").addEventListener("click", exportCurveCsv);
     q("#newTaskFromRecordsButton").addEventListener("click", () => q('.module-nav button[data-view="work"]').click());
-    q("#recordSearch").addEventListener("input", event => {
-        const keyword = event.target.value.trim().toLowerCase();
-        renderRecords(recordRows.filter(row => `${row.taskNo} ${row.taskName} ${row.pointName}`.toLowerCase().includes(keyword)));
+    q("#recordPreviousPage").addEventListener("click", () => loadRecords(recordPage - 1).catch(showRecordError));
+    q("#recordNextPage").addEventListener("click", () => loadRecords(recordPage + 1).catch(showRecordError));
+    q("#recordSearch").addEventListener("input", () => {
+        clearTimeout(recordSearchTimer);
+        recordSearchTimer = setTimeout(() => loadRecords(1).catch(showRecordError), 250);
     });
     q("#refreshAlarmsButton").addEventListener("click", () => loadAlarms().catch(() => {}));
     qa(".save-fit").forEach(button => {
@@ -1084,6 +1173,10 @@ function showControlError(error) {
     });
 }
 
+function showRecordError(error) {
+    q("#recordCount").textContent = error.message;
+}
+
 function startClock() {
     const render = () => q("#clock").textContent = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date());
     render();
@@ -1096,6 +1189,7 @@ async function init() {
     renderSettingsForm();
     renderValueChannelSelector();
     renderCurveTabs();
+    bindTaskSearch();
     clearCurvePage(curvePages.shaftCurveTabs, "请选择通道和已完成测量任务");
     clearCurvePage(curvePages.mainCurveTabs, "请选择通道和已完成测量任务");
     await loadSession();

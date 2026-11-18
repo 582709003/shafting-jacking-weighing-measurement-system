@@ -33,7 +33,6 @@ final class AutomaticProcessSession {
     private BigDecimal nextAscendingThresholdKn;
     private BigDecimal nextDescendingThresholdKn;
     private BigDecimal displacementMm = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-    private BigDecimal pressureMpa = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
     private BigDecimal forceKn = BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP);
     private int motorRpm;
     private boolean deviceReadingAvailable;
@@ -99,7 +98,7 @@ final class AutomaticProcessSession {
     RealtimeSnapshot snapshot(Long runId, String snapshotState) {
         int rpm = deviceReadingAvailable ? motorRpm : simulatedMotorRpm();
         return new RealtimeSnapshot(runId, taskId, pointCode, snapshotState, phase.name(),
-                displacementMm, pressureMpa, rpm, forceKn, capturedAt);
+                displacementMm, rpm, forceKn, capturedAt);
     }
 
     private AutomaticStep startAscendingWhenReady(long nowMillis) {
@@ -209,7 +208,6 @@ final class AutomaticProcessSession {
 
     private void applyRatio(BigDecimal ratio) {
         displacementMm = limits.maxDisplacementMm().multiply(ratio).setScale(2, RoundingMode.HALF_UP);
-        pressureMpa = limits.simulatedPeakPressureMpa().multiply(ratio).setScale(2, RoundingMode.HALF_UP);
         forceKn = limits.maxForceKn().multiply(ratio).setScale(1, RoundingMode.HALF_UP);
         capturedAt = Instant.now();
     }
@@ -280,8 +278,6 @@ enum DeviceAction {
 record SimulationLimits(
         /** 自动测试最大位移，单位 mm。 */
         BigDecimal maxDisplacementMm,
-        /** 模拟压力峰值，单位 MPa，仅用于生成联调数据。 */
-        BigDecimal simulatedPeakPressureMpa,
         /** 模拟电机转速，单位 r/min。 */
         int motorRpm,
         /** 自动测试模拟峰值顶升力，单位 kN。 */

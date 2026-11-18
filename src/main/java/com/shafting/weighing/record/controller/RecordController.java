@@ -1,6 +1,7 @@
 package com.shafting.weighing.record.controller;
 
 import com.shafting.weighing.record.dto.RecordRow;
+import com.shafting.weighing.record.dto.RecordPageResponse;
 import com.shafting.weighing.record.mapper.RecordMapper;
 
 import org.springframework.http.ContentDisposition;
@@ -27,13 +28,25 @@ public class RecordController {
     }
 
     /**
-     * 读取记录页的任务列表，最新任务排在前面。
+     * 分页读取记录页任务，支持按任务编号、任务名称和测量点搜索，最新任务排在前面。
      *
-     * @return 任务、测量点、状态和结果摘要
+     * @param page 页码，从 1 开始；小于 1 时按第 1 页处理
+     * @param size 每页数量，允许 1～100；超出范围时自动限制
+     * @param keyword 搜索关键字，允许为空
+     * @return 当前页任务、页码和总记录数
      */
     @GetMapping
-    public List<RecordRow> records() {
-        return recordMapper.selectRecords();
+    public RecordPageResponse records(@RequestParam(defaultValue = "1") int page,
+                                      @RequestParam(defaultValue = "10") int size,
+                                      @RequestParam(defaultValue = "") String keyword) {
+        int pageSize = Math.min(Math.max(size, 1), 100);
+        String normalizedKeyword = keyword.strip();
+        long total = recordMapper.countRecords(normalizedKeyword);
+        int totalPages = Math.max(1, (int) Math.ceil(total / (double) pageSize));
+        int currentPage = Math.min(Math.max(page, 1), totalPages);
+        long offset = (long) (currentPage - 1) * pageSize;
+        return new RecordPageResponse(recordMapper.selectRecordPage(normalizedKeyword, offset, pageSize),
+                currentPage, pageSize, total, totalPages);
     }
 
     /**

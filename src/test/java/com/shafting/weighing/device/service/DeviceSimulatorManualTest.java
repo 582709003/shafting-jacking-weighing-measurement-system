@@ -93,9 +93,10 @@ class DeviceSimulatorManualTest {
         DeviceSimulator simulator = new DeviceSimulator(
                 mock(RealtimeStateStore.class), publisher, mock(MeasurementSampleMapper.class),
                 mock(TestRunMapper.class), mock(MeasurementTaskMapper.class), properties,
-                stateService, new DeviceCommandGateway());
+                stateService, mock(DeviceCommandGateway.class));
 
-        simulator.zeroManualSimulation("TAIL_SHAFT");
+        simulator.zeroDisplacement("TAIL_SHAFT");
+        clearInvocations(publisher);
         simulator.startManualAction("TAIL_SHAFT", ControlDto.ChannelAction.ASCENDING,
                 new BigDecimal("0.40"));
         Thread.sleep(25);
@@ -127,6 +128,34 @@ class DeviceSimulatorManualTest {
         verify(gateway, org.mockito.Mockito.times(2)).sendQuickRelease("TAIL_SHAFT");
         verify(gateway).sendPause("TAIL_SHAFT");
         verify(gateway).sendStop("TAIL_SHAFT");
+    }
+
+    @Test
+    void shouldSendZeroToDisplacementSensorAndPublishRealtimeZero() {
+        ControlStateService stateService = new ControlStateService();
+        RealtimePublisher publisher = mock(RealtimePublisher.class);
+        DeviceCommandGateway gateway = mock(DeviceCommandGateway.class);
+        when(gateway.readSensorValues("TAIL_SHAFT")).thenReturn(reading("0.25"));
+        DeviceSimulator simulator = new DeviceSimulator(
+                mock(RealtimeStateStore.class), publisher, mock(MeasurementSampleMapper.class),
+                mock(TestRunMapper.class), mock(MeasurementTaskMapper.class), new SimulatorProperties(),
+                stateService, gateway);
+
+        simulator.startManualAction("TAIL_SHAFT", ControlDto.ChannelAction.ASCENDING,
+                new BigDecimal("1.00"));
+        simulator.tick();
+        simulator.stopManual("TAIL_SHAFT");
+        clearInvocations(publisher, gateway);
+
+        simulator.zeroDisplacement("TAIL_SHAFT");
+
+        verify(gateway).sendDisplacementZero("TAIL_SHAFT");
+        ArgumentCaptor<RealtimeSnapshot> snapshots = ArgumentCaptor.forClass(RealtimeSnapshot.class);
+        verify(publisher).publish(snapshots.capture());
+        assertThat(snapshots.getValue().pointCode()).isEqualTo("TAIL_SHAFT");
+        assertThat(snapshots.getValue().displacementMm()).isEqualByComparingTo("0.00");
+        assertThat(snapshots.getValue().forceKn()).isEqualByComparingTo("12.3");
+        assertThat(snapshots.getValue().state()).isEqualTo("IDLE");
     }
 
     @Test

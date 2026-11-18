@@ -17,9 +17,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+/** PLC及模拟报警查询、严格状态流转和动作历史保存业务。 */
 @Service
-/** 模拟报警查询、严格状态流转和动作历史保存业务。 */
 public class AlarmService {
 
     /**
@@ -34,6 +36,8 @@ public class AlarmService {
     private final AlarmActionMapper actionMapper;
     private final SysUserMapper userMapper;
     private final ControlCommandService controlCommandService;
+    /** 当前仍为 1 的 PLC 报警信号；信号未恢复时不允许人工标记恢复。 */
+    private final Set<String> activePlcSignals = ConcurrentHashMap.newKeySet();
 
     public AlarmService(AlarmEventMapper eventMapper, AlarmActionMapper actionMapper, SysUserMapper userMapper,
                         ControlCommandService controlCommandService) {
@@ -72,6 +76,9 @@ public class AlarmService {
         if (transition == null || !transition.from().equals(event.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "当前报警状态不能执行该操作");
         }
+        if ("recover".equals(actionName) && activePlcSignals.contains(event.getAlarmCode())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PLC 报警信号尚未恢复，不能标记恢复");
+        }
         LocalDateTime now = LocalDateTime.now();
         AlarmAction action = new AlarmAction();
         action.setAlarmId(id);
@@ -109,6 +116,48 @@ public class AlarmService {
         // 报警入库后立即执行全局停机，快泄动作也不能例外。
         controlCommandService.emergencyStop(event.getAlarmCode());
         return detail(event.getId());
+    }
+
+    /**
+     * PLC 轮询检测到通讯故障或设备故障时创建报警并执行全局停机。
+     * 同一未关闭报警只创建一次，避免 200 ms 轮询持续产生重复记录。
+     */
+    @Transactional
+    public void activateFromPlc(String alarmCode, String sourceName, String message) {
+        if (eventMapper.selectOpenByCode(alarmCode) != null) {
+            return;
+        }
+        AlarmEvent event = new AlarmEvent();
+        event.setAlarmCode(alarmCode);
+        event.setAlarmLevel("CRITICAL");
+        event.setSourceName(sourceName);
+        event.setMessage(message);
+        event.setStatus("ACTIVE");
+        event.setOccurredAt(LocalDateTime.now());
+        event.setUpdatedAt(LocalDateTime.now());
+        eventMapper.insert(event);
+        controlCommandService.emergencyStop(alarmCode);
+    }
+
+    /**
+     * 同步一次 PLC 报警位状态。
+     *
+     * <p>0→1 时创建报警并全局停机；恢复为 0 只允许后续人工执行恢复、关闭流程，
+     * 不自动修改数据库报警状态。</p>
+     *
+     * @param alarmCode 稳定报警编码
+     * @param active PLC 当前报警位是否为 1
+     * @param sourceName 报警来源名称
+     * @param message 页面报警说明
+     */
+    @Transactional
+    public void updatePlcSignal(String alarmCode, boolean active, String sourceName, String message) {
+        if (!active) {
+            activePlcSignals.remove(alarmCode);
+            return;
+        }
+        activePlcSignals.add(alarmCode);
+        activateFromPlc(alarmCode, sourceName, message);
     }
 
     private AlarmEvent requireEvent(Long id) {

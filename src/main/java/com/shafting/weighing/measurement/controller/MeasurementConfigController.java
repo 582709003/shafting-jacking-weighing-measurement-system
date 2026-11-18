@@ -15,14 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/api")
 /**
  * 测量参数接口，对应前端“轴系设置界面”。
  *
  * <p>页面先读取六个逻辑测量点和指定参数方案；管理员或工程师可保存整套参数，
  * 也可在通道 Tab 页只新增或更新当前测量点参数，两种操作均形成审计记录。</p>
  */
+@RestController
+@RequestMapping("/api")
 public class MeasurementConfigController {
 
     private final MeasurementConfigService measurementConfigService;
@@ -69,10 +69,10 @@ public class MeasurementConfigController {
     }
 
     /**
-     * 保存设置页当前通道的参数；数据库没有该通道参数时新增，已有时按主键更新。
+     * 保存设置页当前通道的数据库参数；数据库没有时新增，已有时按主键更新。
      *
      * <p>仅管理员和工程师可调用。路径通道与请求中的 pointCode 必须一致；成功后递增
-     * 参数方案版本并返回包含六个通道的最新方案。</p>
+     * 参数方案版本并返回包含六个通道的最新方案。本接口不写 PLC，参数会在接通手动或自动模式时下发。</p>
      *
      * @param configId 参数方案主键
      * @param pointCode 当前 Tab 对应的测量点编码

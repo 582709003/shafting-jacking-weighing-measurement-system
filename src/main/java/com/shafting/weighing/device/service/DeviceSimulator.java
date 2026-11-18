@@ -76,7 +76,7 @@ public class DeviceSimulator {
         BigDecimal forceIntervalKn = positiveOr(start.forceIntervalKn(), BigDecimal.ZERO);
         long intervalHoldMillis = Math.max(0L, start.holdSeconds() == null
                 ? 0L : start.holdSeconds() * 1_000L);
-        SimulationLimits limits = new SimulationLimits(displacement, properties.getFallbackPressureMpa(), rpm, force,
+        SimulationLimits limits = new SimulationLimits(displacement, rpm, force,
                 forceIntervalKn, intervalHoldMillis);
         sessions.put(start.runId(), new AutomaticProcessSession(start.taskId(), start.pointId(),
                 start.pointCode(), limits, properties));
@@ -124,9 +124,22 @@ public class DeviceSimulator {
         dispatchManual(session);
     }
 
-    /** 清除指定通道的手动模拟传感器值；真实设备归零后接入时由设备网关替代。 */
-    public void zeroManualSimulation(String pointCode) {
-        manualSensorStates.put(pointCode, new ManualSensorState());
+    /**
+     * 将指定通道的位移传感器清零，并立即向工作页发布 0.00 mm 实时值。
+     *
+     * <p>当前设备网关只保留 PLC 写零调用位置；模拟状态仅修改位移，称重传感器
+     * 当前力值保持不变，避免“位移清零”误清除其他传感器数据。</p>
+     *
+     * @param pointCode 测量点稳定编码
+     */
+    public void zeroDisplacement(String pointCode) {
+        deviceCommandGateway.sendDisplacementZero(pointCode);
+        ManualSensorState sensor = manualSensorStates.computeIfAbsent(pointCode,
+                ignored -> new ManualSensorState());
+        BigDecimal zero = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        sensor.displacementMm = zero;
+        realtimePublisher.publish(new RealtimeSnapshot(null, null, pointCode, "IDLE", "PRECHECK",
+                zero, 0, sensor.forceKn, Instant.now()));
     }
 
     /** 启动六通道自动快泄模拟；复用通道实时流，不创建任务、运行或采样记录。 */
@@ -314,7 +327,7 @@ public class DeviceSimulator {
 
     private RealtimeSnapshot manualSnapshot(ManualSession session, SensorReading reading, String state) {
         return new RealtimeSnapshot(null, null, session.pointCode, state,
-                manualStage(session.action), reading.displacementMm(), BigDecimal.ZERO,
+                manualStage(session.action), reading.displacementMm(),
                 reading.motorRpm(), reading.forceKn(), reading.capturedAt());
     }
 

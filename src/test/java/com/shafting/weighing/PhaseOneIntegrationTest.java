@@ -1,6 +1,7 @@
 package com.shafting.weighing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shafting.weighing.device.service.DeviceCommandGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -9,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -18,6 +20,10 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
@@ -45,6 +51,9 @@ class PhaseOneIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @MockitoBean
+    private DeviceCommandGateway deviceCommandGateway;
 
     @Test
     void shouldRejectAnonymousApiRequest() throws Exception {
@@ -126,20 +135,20 @@ class PhaseOneIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.configName").value("默认六点参数"))
                 .andExpect(jsonPath("$.points.length()").value(6))
-                .andExpect(jsonPath("$.points[0].forceIntervalKn").value(0.5000));
+                .andExpect(jsonPath("$.points[0].forceIntervalKn").value(1.0000));
 
         Integer auditCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM sys_operation_log WHERE operation = 'UPDATE_CONFIG'",
                 Integer.class);
         assertThat(auditCount).isEqualTo(1);
         Integer intervalCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM test_config_point WHERE force_interval_kn = 0.5000",
+                "SELECT COUNT(*) FROM test_config_point WHERE force_interval_kn = 1.0000",
                 Integer.class);
         assertThat(intervalCount).isEqualTo(6);
         String auditJson = jdbcTemplate.queryForObject(
                 "SELECT detail_json FROM sys_operation_log WHERE operation = 'UPDATE_CONFIG'",
                 String.class);
-        assertThat(auditJson).contains("\"forceIntervalKn\":0.5000");
+        assertThat(auditJson).contains("\"forceIntervalKn\":1");
     }
 
     @Test
@@ -181,6 +190,18 @@ class PhaseOneIntegrationTest {
 
     @Test
     @WithMockUser(username = "engineer", roles = "ENGINEER")
+    void shouldSavePointConfigurationWithoutWritingPlc() throws Exception {
+        mockMvc.perform(put("/api/configs/1/points/TAIL_SHAFT")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pointRequest("TAIL_SHAFT", "125.00")))
+                .andExpect(status().isOk());
+
+        verify(deviceCommandGateway, never()).writePointConfiguration(anyString(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "engineer", roles = "ENGINEER")
     void shouldRejectSelectedPointWhenAnyParameterIsMissing() throws Exception {
         mockMvc.perform(put("/api/configs/1/points/TAIL_SHAFT")
                         .with(csrf())
@@ -192,8 +213,25 @@ class PhaseOneIntegrationTest {
                                 "jackingCoefficient", new BigDecimal("1.0000"),
                                 "maxDisplacement", new BigDecimal("0.40"),
                                 "motorRpm", 1200,
-                                "forceIntervalKn", new BigDecimal("0.5000")))))
+                                "forceIntervalKn", BigDecimal.ONE))))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "engineer", roles = "ENGINEER")
+    void shouldRejectForceIntervalOutsidePlcIntegerRange() throws Exception {
+        List<BigDecimal> invalidIntervals = List.of(
+                BigDecimal.ZERO,
+                new BigDecimal("0.5"),
+                new BigDecimal("32768"));
+
+        for (BigDecimal invalidInterval : invalidIntervals) {
+            mockMvc.perform(put("/api/configs/1/points/TAIL_SHAFT")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(pointRequest("TAIL_SHAFT", "125.00", invalidInterval)))
+                    .andExpect(status().isBadRequest());
+        }
     }
 
     @Test
@@ -236,7 +274,7 @@ class PhaseOneIntegrationTest {
                         "jackingCoefficient", new BigDecimal("1.0000"),
                         "maxDisplacement", new BigDecimal("0.40"),
                         "motorRpm", 1200,
-                        "forceIntervalKn", new BigDecimal("0.5000"),
+                        "forceIntervalKn", BigDecimal.ONE,
                         "holdSeconds", 5))
                 .toList();
         return objectMapper.writeValueAsBytes(Map.of(
@@ -245,6 +283,11 @@ class PhaseOneIntegrationTest {
     }
 
     private byte[] pointRequest(String pointCode, String standardForce) throws Exception {
+        return pointRequest(pointCode, standardForce, BigDecimal.ONE);
+    }
+
+    private byte[] pointRequest(String pointCode, String standardForce, BigDecimal forceIntervalKn)
+            throws Exception {
         return objectMapper.writeValueAsBytes(Map.of(
                 "pointCode", pointCode,
                 "standardForce", new BigDecimal(standardForce),
@@ -252,7 +295,7 @@ class PhaseOneIntegrationTest {
                 "jackingCoefficient", new BigDecimal("1.0000"),
                 "maxDisplacement", new BigDecimal("0.40"),
                 "motorRpm", 1200,
-                "forceIntervalKn", new BigDecimal("0.5000"),
+                "forceIntervalKn", forceIntervalKn,
                 "holdSeconds", 5));
     }
 

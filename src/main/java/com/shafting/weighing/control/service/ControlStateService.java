@@ -65,14 +65,8 @@ public class ControlStateService {
 
     /** 接通指定通道的手动或自动模式，同一通道两种模式互斥。 */
     public synchronized void connectMode(String pointCode, ControlDto.ControlMode mode) {
-        requireUnlocked();
-        if (mode == ControlDto.ControlMode.OFF) {
-            throw new IllegalArgumentException("接通模式不能为 OFF");
-        }
+        assertConnectModeAllowed(pointCode, mode);
         MutableChannelState channel = requireChannel(pointCode);
-        if (activeChannel() != null || globalAction != ControlDto.GlobalAction.IDLE) {
-            throw conflict("动作执行期间不能切换模式");
-        }
         if (channel.mode != mode) {
             // 切换同一通道的手动/自动模式时，清除上一模式的使能和清零状态。
             channel.reset();
@@ -80,8 +74,26 @@ public class ControlStateService {
         }
     }
 
+    /** 在向 PLC 选择通道、同步参数和发送模式脉冲前执行同样的状态校验。 */
+    public synchronized void assertConnectModeAllowed(String pointCode, ControlDto.ControlMode mode) {
+        requireUnlocked();
+        if (mode == ControlDto.ControlMode.OFF) {
+            throw new IllegalArgumentException("接通模式不能为 OFF");
+        }
+        requireChannel(pointCode);
+        if (activeChannel() != null || globalAction != ControlDto.GlobalAction.IDLE) {
+            throw conflict("动作执行期间不能切换模式");
+        }
+    }
+
     /** 断开指定模式；动作仍在执行时由业务层先停止运行。 */
     public synchronized void disconnectMode(String pointCode, ControlDto.ControlMode expectedMode) {
+        assertDisconnectModeAllowed(pointCode, expectedMode);
+        requireChannel(pointCode).reset();
+    }
+
+    /** 在向 PLC 发送模式断开脉冲前校验当前模式和全局动作。 */
+    public synchronized void assertDisconnectModeAllowed(String pointCode, ControlDto.ControlMode expectedMode) {
         MutableChannelState channel = requireChannel(pointCode);
         if (channel.mode != expectedMode) {
             throw conflict("当前通道未接通该模式");
@@ -89,11 +101,20 @@ public class ControlStateService {
         if (globalAction != ControlDto.GlobalAction.IDLE) {
             throw conflict("请先停止自动快泄");
         }
-        channel.reset();
     }
 
     /** 记录当前通道位移已清零；下一次手动上升或自动测试启动时消费。 */
     public synchronized void markZeroed(String pointCode) {
+        assertZeroAllowed(pointCode);
+        requireChannel(pointCode).zeroed = true;
+    }
+
+    /**
+     * 在向 PLC 下发写零指令前校验当前状态，防止动作中误改位移传感器零点。
+     *
+     * @param pointCode 测量点稳定编码
+     */
+    public synchronized void assertZeroAllowed(String pointCode) {
         requireUnlocked();
         MutableChannelState channel = requireChannel(pointCode);
         if (channel.mode == ControlDto.ControlMode.OFF) {
@@ -102,11 +123,16 @@ public class ControlStateService {
         if (channel.action != ControlDto.ChannelAction.IDLE) {
             throw conflict("动作执行期间不能清零");
         }
-        channel.zeroed = true;
     }
 
     /** 按下手动模式的启动按钮；之后可重复执行动作，直至模式断开或切换。 */
     public synchronized void startManual(String pointCode) {
+        assertManualStartAllowed(pointCode);
+        requireChannel(pointCode).manualStarted = true;
+    }
+
+    /** 在发送 PLC 手动启动脉冲前校验模式和动作状态。 */
+    public synchronized void assertManualStartAllowed(String pointCode) {
         requireUnlocked();
         MutableChannelState channel = requireChannel(pointCode);
         if (channel.mode != ControlDto.ControlMode.MANUAL) {
@@ -115,7 +141,6 @@ public class ControlStateService {
         if (channel.action != ControlDto.ChannelAction.IDLE) {
             throw conflict("当前通道动作尚未停止");
         }
-        channel.manualStarted = true;
     }
 
     /**
@@ -125,6 +150,20 @@ public class ControlStateService {
      */
     public synchronized void beginAction(String pointCode, ControlDto.ChannelAction action,
                                          BigDecimal targetDisplacementMm, boolean consumesZero) {
+        assertActionAllowed(pointCode, action, consumesZero);
+        MutableChannelState channel = requireChannel(pointCode);
+        if (consumesZero) {
+            // 清零只对一次上升或自动测试有效，设备确认启动成功后立即消费。
+            channel.zeroed = false;
+        }
+        channel.action = action;
+        channel.paused = false;
+        channel.targetDisplacementMm = targetDisplacementMm;
+    }
+
+    /** 在向 PLC 发送动作脉冲前执行报警、模式、互斥和清零校验。 */
+    public synchronized void assertActionAllowed(String pointCode, ControlDto.ChannelAction action,
+                                                  boolean consumesZero) {
         requireUnlocked();
         if (globalAction != ControlDto.GlobalAction.IDLE || activeChannel() != null) {
             throw conflict("已有通道正在执行动作");
@@ -137,13 +176,6 @@ public class ControlStateService {
         if (consumesZero && !channel.zeroed) {
             throw conflict("请先执行本通道位移清零");
         }
-        if (consumesZero) {
-            // 清零只对一次上升或自动测试有效，启动成功后立即消费。
-            channel.zeroed = false;
-        }
-        channel.action = action;
-        channel.paused = false;
-        channel.targetDisplacementMm = targetDisplacementMm;
     }
 
     /** 关联动作创建的数据库运行。 */
@@ -236,6 +268,54 @@ public class ControlStateService {
         return active == null ? null : active.pointCode;
     }
 
+    /**
+     * 用 PLC 轮询反馈修正页面按钮状态。
+     *
+     * <p>清零标记和数据库运行关联由 Java 业务维护，反馈同步不会覆盖这两项；模式、动作和暂停状态
+     * 始终以 PLC 为准。</p>
+     *
+     * @param pointCode PLC 当前选择通道；反馈无有效通道时为空
+     * @param modeCode 0断开、1手动、2自动
+     * @param actionCode 0空闲、1手动已启动、2上升、3下降、4快泄、5自动测试、6自动快泄
+     * @param runStateCode 0空闲、1运行、2暂停、3完成、4故障
+     */
+    public synchronized void synchronizePlcFeedback(String pointCode, int modeCode,
+                                                     int actionCode, int runStateCode) {
+        if (alarmLocked) {
+            // 报警后的安全复位优先级高于普通轮询反馈；必须由报警关闭流程显式解除锁定。
+            return;
+        }
+        if (modeCode == 0) {
+            channels.values().forEach(MutableChannelState::clearControlPreservingRun);
+            globalAction = ControlDto.GlobalAction.IDLE;
+            globalPaused = false;
+            return;
+        }
+        MutableChannelState channel = requireChannel(pointCode);
+        ControlDto.ControlMode mode = modeCode == 1
+                ? ControlDto.ControlMode.MANUAL : ControlDto.ControlMode.AUTO;
+        if (channel.mode != mode) {
+            Long runId = channel.runId;
+            boolean zeroed = channel.zeroed;
+            channel.reset();
+            channel.mode = mode;
+            channel.runId = runId;
+            channel.zeroed = zeroed;
+        }
+        globalAction = actionCode == 6
+                ? ControlDto.GlobalAction.AUTO_QUICK_RELEASE : ControlDto.GlobalAction.IDLE;
+        globalPaused = actionCode == 6 && runStateCode == 2;
+        channel.manualStarted = mode == ControlDto.ControlMode.MANUAL && actionCode >= 1;
+        channel.action = switch (actionCode) {
+            case 2 -> ControlDto.ChannelAction.ASCENDING;
+            case 3 -> ControlDto.ChannelAction.DESCENDING;
+            case 4 -> ControlDto.ChannelAction.MANUAL_QUICK_RELEASE;
+            case 5 -> ControlDto.ChannelAction.AUTO_TEST;
+            default -> ControlDto.ChannelAction.IDLE;
+        };
+        channel.paused = channel.action != ControlDto.ChannelAction.IDLE && runStateCode == 2;
+    }
+
     private void requireMode(MutableChannelState channel, ControlDto.ChannelAction action) {
         ControlDto.ControlMode required = switch (action) {
             case AUTO_TEST -> ControlDto.ControlMode.AUTO;
@@ -311,6 +391,12 @@ public class ControlStateService {
             zeroed = false;
             targetDisplacementMm = null;
             runId = null;
+        }
+
+        private void clearControlPreservingRun() {
+            Long currentRunId = runId;
+            reset();
+            runId = currentRunId;
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.shafting.weighing.task.service;
 
 import com.shafting.weighing.device.dto.SimulationStart;
+import com.shafting.weighing.device.config.PlcProperties;
+import com.shafting.weighing.device.service.DeviceCommandGateway;
 import com.shafting.weighing.device.service.DeviceSimulator;
 import com.shafting.weighing.measurement.entity.MeasurementPoint;
 import com.shafting.weighing.measurement.entity.TestConfigPoint;
@@ -21,12 +23,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
+/** 测量任务创建、命令幂等、运行状态机及 PLC/模拟器调度业务。 */
 @Service
-/** 测量任务创建、命令幂等、运行状态机和模拟器调度业务。 */
 public class MeasurementTaskService {
 
     private static final DateTimeFormatter TASK_NUMBER_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -39,6 +41,8 @@ public class MeasurementTaskService {
     private final TestConfigPointMapper testConfigPointMapper;
     private final SysUserMapper sysUserMapper;
     private final DeviceSimulator deviceSimulator;
+    private final DeviceCommandGateway deviceGateway;
+    private final PlcProperties plcProperties;
 
     public MeasurementTaskService(MeasurementTaskMapper measurementTaskMapper,
                                   TestRunMapper testRunMapper,
@@ -47,7 +51,9 @@ public class MeasurementTaskService {
                                   TestConfigMapper testConfigMapper,
                                   TestConfigPointMapper testConfigPointMapper,
                                   SysUserMapper sysUserMapper,
-                                  DeviceSimulator deviceSimulator) {
+                                  DeviceSimulator deviceSimulator,
+                                  DeviceCommandGateway deviceGateway,
+                                  PlcProperties plcProperties) {
         this.measurementTaskMapper = measurementTaskMapper;
         this.testRunMapper = testRunMapper;
         this.deviceCommandMapper = deviceCommandMapper;
@@ -56,6 +62,8 @@ public class MeasurementTaskService {
         this.testConfigPointMapper = testConfigPointMapper;
         this.sysUserMapper = sysUserMapper;
         this.deviceSimulator = deviceSimulator;
+        this.deviceGateway = deviceGateway;
+        this.plcProperties = plcProperties;
     }
 
     /**
@@ -160,11 +168,17 @@ public class MeasurementTaskService {
         }
         MeasurementTask task = requireTask(run.getTaskId());
         LocalDateTime now = LocalDateTime.now();
+        if (plcProperties.isPlcMode()) {
+            // PLC 命令确认成功后才更新数据库，通讯失败时事务保持原状态。
+            controlDevice(run, task, request.commandType());
+        }
         applyState(task, run, nextState, now);
         testRunMapper.updateById(run);
         measurementTaskMapper.updateById(task);
         deviceCommandMapper.insertCommand(request.commandNo(), runId, request.commandType().name());
-        controlSimulator(run, task, request.commandType());
+        if (!plcProperties.isPlcMode()) {
+            controlDevice(run, task, request.commandType());
+        }
         return response(task, run, measurementPointMapper.selectById(run.getPointId()));
     }
 
@@ -191,7 +205,39 @@ public class MeasurementTaskService {
         task.setTaskStatus("STOPPED");
         task.setCompletedAt(now);
         measurementTaskMapper.updateById(task);
-        deviceSimulator.stop(runId);
+        if (!plcProperties.isPlcMode()) {
+            deviceSimulator.stop(runId);
+        }
+    }
+
+    /**
+     * PLC 反馈自动流程完成后同步结束运行和任务。
+     *
+     * <p>轮询可能重复读到完成状态，因此本方法对已完成记录保持幂等。</p>
+     *
+     * @param runId PLC 当前自动运行主键
+     */
+    @Transactional
+    public synchronized void completeFromPlc(Long runId) {
+        TestRun run = requireRun(runId);
+        if ("COMPLETED".equals(run.getState())) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        run.setState("COMPLETED");
+        run.setProcessStage("COMPLETED");
+        run.setEndedAt(now);
+        testRunMapper.updateById(run);
+        MeasurementTask task = requireTask(run.getTaskId());
+        task.setTaskStatus("COMPLETED");
+        task.setCompletedAt(now);
+        measurementTaskMapper.updateById(task);
+    }
+
+    /** PLC 反馈故障后按故障编码停止运行，不再向已经故障的 PLC 重复发送动作命令。 */
+    @Transactional
+    public synchronized void stopFromPlc(Long runId, String faultCode) {
+        forceStop(runId, faultCode);
     }
 
     /** 根据当前状态和命令计算下一状态，非法跳转统一返回 409。 */
@@ -230,9 +276,18 @@ public class MeasurementTaskService {
         }
     }
 
-    /** 将已通过状态校验的命令转发给设备模拟器。 */
-    private void controlSimulator(TestRun run, MeasurementTask task, TaskDto.CommandType commandType) {
+    /** 将已通过状态校验的命令转发给 PLC 或设备模拟器。 */
+    private void controlDevice(TestRun run, MeasurementTask task, TaskDto.CommandType commandType) {
         MeasurementPoint point = measurementPointMapper.selectById(run.getPointId());
+        if (plcProperties.isPlcMode()) {
+            switch (commandType) {
+                case START -> deviceGateway.sendAutomaticTest(point.getPointCode());
+                case PAUSE -> deviceGateway.sendPause(point.getPointCode());
+                case RESUME -> deviceGateway.sendResume(point.getPointCode());
+                case STOP -> deviceGateway.sendStop(point.getPointCode());
+            }
+            return;
+        }
         switch (commandType) {
             case START -> {
                 // 启动参数取任务绑定方案中的当前测量点配置，不使用前端临时值。

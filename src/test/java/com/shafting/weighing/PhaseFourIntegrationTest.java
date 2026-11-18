@@ -66,13 +66,31 @@ class PhaseFourIntegrationTest {
                         .content(manualBody()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.source").value("MANUAL"))
-                .andExpect(jsonPath("$.revisionNo").value(1));
+                .andExpect(jsonPath("$.revisionNo").value(1))
+                .andExpect(jsonPath("$.lifting.second.displacementMm").value(0.12))
+                .andExpect(jsonPath("$.lowering.second.displacementMm").value(0.13));
 
         assertThat(sampleCount(runId)).isEqualTo(before);
         mockMvc.perform(get("/api/runs/{runId}/curve-fit", runId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.source").value("MANUAL"))
                 .andExpect(jsonPath("$.lifting.first.forceKn").value(30));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void shouldRejectManualRevisionWhenLowerEndpointLeavesForceAxis() throws Exception {
+        long runId = createRun();
+        insertSamples(runId);
+        byte[] body = objectMapper.writeValueAsBytes(Map.of(
+                "lifting", Map.of("first", Map.of("forceKn", 30, "displacementMm", 0.01),
+                        "second", Map.of("forceKn", 60, "displacementMm", 0.12)),
+                "lowering", Map.of("first", Map.of("forceKn", 25, "displacementMm", 0),
+                        "second", Map.of("forceKn", 55, "displacementMm", 0.13))));
+
+        mockMvc.perform(post("/api/runs/{runId}/curve-fit/manual", runId)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
     }
 
     private long createRun() throws Exception {
@@ -111,8 +129,8 @@ class PhaseFourIntegrationTest {
     private byte[] manualBody() throws Exception {
         return objectMapper.writeValueAsBytes(Map.of(
                 "lifting", Map.of("first", Map.of("forceKn", 30, "displacementMm", 0),
-                        "second", Map.of("forceKn", 60, "displacementMm", 0.15)),
+                        "second", Map.of("forceKn", 60, "displacementMm", 0.12)),
                 "lowering", Map.of("first", Map.of("forceKn", 25, "displacementMm", 0),
-                        "second", Map.of("forceKn", 55, "displacementMm", 0.15))));
+                        "second", Map.of("forceKn", 55, "displacementMm", 0.13))));
     }
 }

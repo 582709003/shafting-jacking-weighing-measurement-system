@@ -35,9 +35,17 @@ class PhaseFiveIntegrationTest {
     @WithMockUser(username = "operator", roles = "OPERATOR")
     void shouldListRecordsAndExportUtf8Csv() throws Exception {
         createRun();
-        mockMvc.perform(get("/api/records"))
+        mockMvc.perform(get("/api/records")
+                        .param("page", "1")
+                        .param("size", "1")
+                        .param("keyword", "记录测试"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].taskNo").isNotEmpty());
+                .andExpect(jsonPath("$.records.length()").value(1))
+                .andExpect(jsonPath("$.records[0].taskNo").isNotEmpty())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.pageSize").value(1))
+                .andExpect(jsonPath("$.total").isNumber())
+                .andExpect(jsonPath("$.totalPages").isNumber());
         mockMvc.perform(get("/api/records/export"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))

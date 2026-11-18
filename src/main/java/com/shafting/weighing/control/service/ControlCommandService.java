@@ -2,6 +2,8 @@ package com.shafting.weighing.control.service;
 
 import com.shafting.weighing.alarm.mapper.AlarmEventMapper;
 import com.shafting.weighing.control.dto.ControlDto;
+import com.shafting.weighing.device.config.PlcProperties;
+import com.shafting.weighing.device.service.DeviceCommandGateway;
 import com.shafting.weighing.device.service.DeviceSimulator;
 import com.shafting.weighing.measurement.entity.MeasurementPoint;
 import com.shafting.weighing.measurement.entity.TestConfigPoint;
@@ -16,6 +18,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -25,19 +29,22 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 编排工作页控制命令、任务持久化、设备模拟器和报警联锁。
+ * 编排工作页控制命令、任务持久化、PLC/模拟器设备边界和报警联锁。
  *
  * <p>前端不参与状态判定；每条命令必须先通过本服务校验，再修改内存状态和设备会话。
- * 当前实现只驱动软件模拟器，真实 PLC、电磁阀和硬件安全联锁仍属于设备接入边界。</p>
+ * PLC 模式只转发原子命令并等待反馈，自动顶升时序和硬件安全联锁由 PLC 控制程序负责。</p>
  */
 @Service
 public class ControlCommandService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ControlCommandService.class);
     private static final Long DEFAULT_CONFIG_ID = 1L;
 
     private final ControlStateService stateService;
     private final MeasurementTaskService taskService;
     private final DeviceSimulator deviceSimulator;
+    private final DeviceCommandGateway deviceGateway;
+    private final PlcProperties plcProperties;
     private final MeasurementPointMapper pointMapper;
     private final TestConfigPointMapper configPointMapper;
     private final AlarmEventMapper alarmEventMapper;
@@ -48,6 +55,8 @@ public class ControlCommandService {
     public ControlCommandService(ControlStateService stateService,
                                  MeasurementTaskService taskService,
                                  DeviceSimulator deviceSimulator,
+                                 DeviceCommandGateway deviceGateway,
+                                 PlcProperties plcProperties,
                                  MeasurementPointMapper pointMapper,
                                  TestConfigPointMapper configPointMapper,
                                  AlarmEventMapper alarmEventMapper,
@@ -57,6 +66,8 @@ public class ControlCommandService {
         this.stateService = stateService;
         this.taskService = taskService;
         this.deviceSimulator = deviceSimulator;
+        this.deviceGateway = deviceGateway;
+        this.plcProperties = plcProperties;
         this.pointMapper = pointMapper;
         this.configPointMapper = configPointMapper;
         this.alarmEventMapper = alarmEventMapper;
@@ -89,17 +100,22 @@ public class ControlCommandService {
                                                                  String username) {
         Long configId = request.configId() == null ? DEFAULT_CONFIG_ID : request.configId();
         switch (request.commandType()) {
-            case MANUAL_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.MANUAL);
+            case MANUAL_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.MANUAL, configId);
             case MANUAL_DISCONNECT -> disconnectMode(requirePointCode(request), ControlDto.ControlMode.MANUAL);
-            case AUTO_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.AUTO);
+            case AUTO_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.AUTO, configId);
             case AUTO_DISCONNECT -> disconnectMode(requirePointCode(request), ControlDto.ControlMode.AUTO);
             case ZERO_DISPLACEMENT -> {
                 String pointCode = requirePointCode(request);
+                // 先校验控制状态，再向 PLC 写零；写零失败时不得把通道标记为已清零。
+                stateService.assertZeroAllowed(pointCode);
+                if (plcProperties.isPlcMode()) {
+                    deviceGateway.sendDisplacementZero(pointCode);
+                } else {
+                    deviceSimulator.zeroDisplacement(pointCode);
+                }
                 stateService.markZeroed(pointCode);
-                // 无 PLC 联调时同步归零手动模拟传感器，确保后续动作从页面零点开始。
-                deviceSimulator.zeroManualSimulation(pointCode);
             }
-            case MANUAL_ENABLE -> stateService.startManual(requirePointCode(request));
+            case MANUAL_ENABLE -> startManualControl(requirePointCode(request));
             case MANUAL_ASCEND -> startManual(request, configId, ControlDto.ChannelAction.ASCENDING);
             case MANUAL_DESCEND -> startManual(request, configId, ControlDto.ChannelAction.DESCENDING);
             case MANUAL_QUICK_RELEASE -> startManual(request, configId,
@@ -111,7 +127,7 @@ public class ControlCommandService {
             case AUTO_QUICK_RELEASE -> startAutoQuickRelease(requirePointCode(request));
             case AUTO_PAUSE -> pauseAutomatic(requirePointCode(request), request.commandNo());
             case AUTO_RESUME -> resumeAutomatic(requirePointCode(request), request.commandNo());
-            case AUTO_STOP -> stopAutomatic(requirePointCode(request));
+            case AUTO_STOP -> stopAutomatic(requirePointCode(request), request.commandNo());
         }
         ControlDto.ControlStateResponse response = stateService.snapshot();
         writeAudit(request, username, response);
@@ -120,7 +136,19 @@ public class ControlCommandService {
 
     /** 报警发生时停止全部运行并锁定控制，故障码保存报警编码。 */
     public synchronized void emergencyStop(String alarmCode) {
-        deviceSimulator.stopAllManual();
+        if (plcProperties.isPlcMode()) {
+            String activePointCode = stateService.activePointCode();
+            if (activePointCode != null && !"PLC_COMMUNICATION".equals(alarmCode)) {
+                try {
+                    // DB12 设备报警时补发停止脉冲；即使 PLC 未确认，也必须继续完成软件侧锁定。
+                    deviceGateway.sendStop(activePointCode);
+                } catch (RuntimeException exception) {
+                    LOGGER.warn("PLC 报警停机指令未确认，报警编码={}，原因={}", alarmCode, exception.getMessage());
+                }
+            }
+        } else {
+            deviceSimulator.stopAllManual();
+        }
         stopAllRuns(alarmCode);
         stateService.alarmStop();
     }
@@ -132,25 +160,69 @@ public class ControlCommandService {
         }
     }
 
-    private void connectMode(String pointCode, ControlDto.ControlMode mode) {
+    private void connectMode(String pointCode, ControlDto.ControlMode mode, Long configId) {
         ControlDto.ChannelState channel = stateService.channel(pointCode);
         if (channel.mode() != mode && channel.action() == ControlDto.ChannelAction.IDLE
                 && channel.runId() != null) {
             // 自动运行停止后可能短暂保留关联主键，切换模式前先关闭，避免遗留设备会话。
             taskService.forceStop(channel.runId(), null);
         }
+        stateService.assertConnectModeAllowed(pointCode, mode);
+        DeviceCommandGateway.PointConfiguration configuration = plcProperties.isPlcMode()
+                ? plcConfiguration(configId, pointCode) : null;
+        deviceGateway.connectMode(pointCode, mode, configuration);
         stateService.connectMode(pointCode, mode);
+    }
+
+    /** 读取当前通道数据库参数，并转换为 PLC 接通模式时的批量写入对象。 */
+    private DeviceCommandGateway.PointConfiguration plcConfiguration(Long configId, String pointCode) {
+        MeasurementPoint point = requirePoint(pointCode);
+        TestConfigPoint config = requireConfigPoint(configId, point.getId());
+        if (config.getStandardForce() == null || config.getStandardForce().signum() <= 0
+                || config.getJackingCoefficient() == null || config.getJackingCoefficient().signum() <= 0
+                || config.getMaxDisplacement() == null || config.getMaxDisplacement().signum() <= 0
+                || config.getMotorRpm() == null || config.getMotorRpm() <= 0
+                || config.getForceIntervalKn() == null || config.getForceIntervalKn().signum() <= 0
+                || config.getHoldSeconds() == null || config.getHoldSeconds() <= 0) {
+            throw conflict("当前通道参数未完整配置，不能接通模式");
+        }
+        int forceInterval;
+        try {
+            forceInterval = config.getForceIntervalKn().intValueExact();
+        } catch (ArithmeticException exception) {
+            throw conflict("力值间隔必须是 1～32767 kN 的整数");
+        }
+        if (forceInterval > Short.MAX_VALUE) {
+            throw conflict("力值间隔必须是 1～32767 kN 的整数");
+        }
+        return new DeviceCommandGateway.PointConfiguration(
+                config.getStandardForce(), config.getJackingCoefficient(), config.getMaxDisplacement(),
+                BigDecimal.valueOf(config.getMotorRpm()), forceInterval,
+                BigDecimal.valueOf(config.getHoldSeconds()));
     }
 
     private void disconnectMode(String pointCode, ControlDto.ControlMode mode) {
         ControlDto.ChannelState channel = stateService.channel(pointCode);
+        stateService.assertDisconnectModeAllowed(pointCode, mode);
         if (mode == ControlDto.ControlMode.MANUAL && channel.action() != ControlDto.ChannelAction.IDLE) {
-            deviceSimulator.stopManual(pointCode);
+            if (plcProperties.isPlcMode()) {
+                deviceGateway.sendStop(pointCode);
+            } else {
+                deviceSimulator.stopManual(pointCode);
+            }
         }
         if (channel.runId() != null) {
             taskService.forceStop(channel.runId(), null);
         }
+        deviceGateway.disconnectMode(mode);
         stateService.disconnectMode(pointCode, mode);
+    }
+
+    /** 校验成功后向 PLC 发送启动脉冲；模拟模式只更新既有内存状态。 */
+    private void startManualControl(String pointCode) {
+        stateService.assertManualStartAllowed(pointCode);
+        deviceGateway.sendManualStart(pointCode);
+        stateService.startManual(pointCode);
     }
 
     private void startManual(ControlDto.CommandRequest request, Long configId,
@@ -163,13 +235,27 @@ public class ControlCommandService {
             target = validateAscent(config.getManualTargetDisplacement());
         }
         boolean consumesZero = action == ControlDto.ChannelAction.ASCENDING;
-        stateService.beginAction(pointCode, action, target, consumesZero);
+        stateService.assertActionAllowed(pointCode, action, consumesZero);
         try {
-            // 手动操作只下发设备动作并监视实时位移，不创建测量任务、运行或采样记录。
-            deviceSimulator.startManualAction(pointCode, action, target);
+            if (plcProperties.isPlcMode()) {
+                sendManualPlcAction(pointCode, action);
+            } else {
+                // 手动操作只下发设备动作并监视实时位移，不创建测量任务、运行或采样记录。
+                deviceSimulator.startManualAction(pointCode, action, target);
+            }
+            stateService.beginAction(pointCode, action, target, consumesZero);
         } catch (RuntimeException exception) {
             stateService.finishAction(pointCode, null);
             throw exception;
+        }
+    }
+
+    private void sendManualPlcAction(String pointCode, ControlDto.ChannelAction action) {
+        switch (action) {
+            case ASCENDING -> deviceGateway.sendAscending(pointCode);
+            case DESCENDING -> deviceGateway.sendDescending(pointCode);
+            case MANUAL_QUICK_RELEASE -> deviceGateway.sendQuickRelease(pointCode);
+            case IDLE, AUTO_TEST -> throw new IllegalArgumentException("不是手动 PLC 动作：" + action);
         }
     }
 
@@ -181,19 +267,31 @@ public class ControlCommandService {
         if (channel.mode() != ControlDto.ControlMode.MANUAL || !manualAction) {
             throw conflict("当前通道没有可停止的手动运行");
         }
-        deviceSimulator.stopManual(pointCode);
+        if (plcProperties.isPlcMode()) {
+            deviceGateway.sendStop(pointCode);
+        } else {
+            deviceSimulator.stopManual(pointCode);
+        }
         stateService.finishAction(pointCode, null);
     }
 
     private void pauseManual(String pointCode) {
         requireManualAction(pointCode, false);
-        deviceSimulator.pauseManual(pointCode);
+        if (plcProperties.isPlcMode()) {
+            deviceGateway.sendPause(pointCode);
+        } else {
+            deviceSimulator.pauseManual(pointCode);
+        }
         stateService.pauseChannelAction(pointCode);
     }
 
     private void resumeManual(String pointCode) {
         requireManualAction(pointCode, true);
-        deviceSimulator.resumeManual(pointCode);
+        if (plcProperties.isPlcMode()) {
+            deviceGateway.sendResume(pointCode);
+        } else {
+            deviceSimulator.resumeManual(pointCode);
+        }
         stateService.resumeChannelAction(pointCode);
     }
 
@@ -217,14 +315,20 @@ public class ControlCommandService {
             emergencyStop("ACTIVE_ALARM");
             throw conflict("存在未关闭报警，不能启动自动测试");
         }
-        stateService.beginAction(pointCode, ControlDto.ChannelAction.AUTO_TEST, null, true);
+        stateService.assertActionAllowed(pointCode, ControlDto.ChannelAction.AUTO_TEST, true);
+        TaskDto.TaskResponse task = null;
         try {
-            TaskDto.TaskResponse task = taskService.createAutomaticControlTask(configId, pointCode,
+            task = taskService.createAutomaticControlTask(configId, pointCode,
                     point.getPointName() + "自动测试", username);
             TaskDto.TaskResponse running = taskService.command(task.runId(),
                     new TaskDto.CommandRequest(request.commandNo(), TaskDto.CommandType.START));
+            stateService.beginAction(pointCode, ControlDto.ChannelAction.AUTO_TEST, null, true);
             stateService.attachRun(pointCode, running.runId());
         } catch (RuntimeException exception) {
+            if (task != null) {
+                // 任务创建已单独提交；PLC 未确认启动时也必须留下明确的失败状态和故障码。
+                taskService.stopFromPlc(task.runId(), "PLC_COMMAND_FAILED");
+            }
             stateService.finishAction(pointCode, null);
             throw exception;
         }
@@ -241,15 +345,21 @@ public class ControlCommandService {
 
     /** 校验当前自动模式后，为全部启用通道启动不落库的自动快泄设备会话。 */
     private void startAutoQuickRelease(String pointCode) {
-        List<String> pointCodes = pointMapper.selectList(Wrappers.<MeasurementPoint>lambdaQuery()
-                        .eq(MeasurementPoint::getEnabled, 1)
-                        .orderByAsc(MeasurementPoint::getSortNo))
-                .stream().map(MeasurementPoint::getPointCode).toList();
         stateService.connectAutoQuickRelease(pointCode);
         try {
-            deviceSimulator.startAutoQuickRelease(pointCodes);
+            if (plcProperties.isPlcMode()) {
+                deviceGateway.sendAutomaticQuickRelease(pointCode);
+            } else {
+                List<String> pointCodes = pointMapper.selectList(Wrappers.<MeasurementPoint>lambdaQuery()
+                                .eq(MeasurementPoint::getEnabled, 1)
+                                .orderByAsc(MeasurementPoint::getSortNo))
+                        .stream().map(MeasurementPoint::getPointCode).toList();
+                deviceSimulator.startAutoQuickRelease(pointCodes);
+            }
         } catch (RuntimeException exception) {
-            deviceSimulator.stopAutoQuickRelease();
+            if (!plcProperties.isPlcMode()) {
+                deviceSimulator.stopAutoQuickRelease();
+            }
             stateService.disconnectAutoQuickRelease();
             throw exception;
         }
@@ -257,7 +367,11 @@ public class ControlCommandService {
 
     private void pauseAutomatic(String pointCode, String commandNo) {
         if (stateService.snapshot().globalAction() == ControlDto.GlobalAction.AUTO_QUICK_RELEASE) {
-            deviceSimulator.pauseAutoQuickRelease();
+            if (plcProperties.isPlcMode()) {
+                deviceGateway.sendPause(pointCode);
+            } else {
+                deviceSimulator.pauseAutoQuickRelease();
+            }
             stateService.pauseAutoQuickRelease();
             return;
         }
@@ -268,7 +382,11 @@ public class ControlCommandService {
 
     private void resumeAutomatic(String pointCode, String commandNo) {
         if (stateService.snapshot().globalAction() == ControlDto.GlobalAction.AUTO_QUICK_RELEASE) {
-            deviceSimulator.resumeAutoQuickRelease();
+            if (plcProperties.isPlcMode()) {
+                deviceGateway.sendResume(pointCode);
+            } else {
+                deviceSimulator.resumeAutoQuickRelease();
+            }
             stateService.resumeAutoQuickRelease();
             return;
         }
@@ -277,9 +395,13 @@ public class ControlCommandService {
         stateService.resumeChannelAction(pointCode);
     }
 
-    private void stopAutomatic(String pointCode) {
+    private void stopAutomatic(String pointCode, String commandNo) {
         if (stateService.snapshot().globalAction() == ControlDto.GlobalAction.AUTO_QUICK_RELEASE) {
-            deviceSimulator.stopAutoQuickRelease();
+            if (plcProperties.isPlcMode()) {
+                deviceGateway.sendStop(pointCode);
+            } else {
+                deviceSimulator.stopAutoQuickRelease();
+            }
             stateService.disconnectAutoQuickRelease();
             return;
         }
@@ -288,7 +410,7 @@ public class ControlCommandService {
                 || channel.action() != ControlDto.ChannelAction.AUTO_TEST || channel.runId() == null) {
             throw conflict("当前通道没有可停止的自动动作");
         }
-        taskService.forceStop(channel.runId(), null);
+        taskService.command(channel.runId(), new TaskDto.CommandRequest(commandNo, TaskDto.CommandType.STOP));
         stateService.finishAction(pointCode, channel.runId());
     }
 

@@ -90,9 +90,8 @@ public class CurveFitService {
     public CurveDto.FitResponse manualFit(Long runId, CurveDto.ManualRequest request, String username) {
         requireValid(request.lifting());
         requireValid(request.lowering());
-        BigDecimal maximumDisplacement = maximumDisplacement(sampleMapper.selectByRunId(runId));
-        requireAnchored(request.lifting(), maximumDisplacement);
-        requireAnchored(request.lowering(), maximumDisplacement);
+        requireManualEndpoints(request.lifting());
+        requireManualEndpoints(request.lowering());
         CurveDto.FitResponse response = save(runId, "MANUAL", request.lifting(), request.lowering(), username);
         operationLogMapper.insertOperation(userMapper.selectIdByUsername(username), "CURVE", "MANUAL_REVISION",
                 runId, "{\"revisionNo\":" + response.revisionNo() + "}");
@@ -285,12 +284,12 @@ public class CurveFitService {
         }
     }
 
-    /** 曲线页端点只能沿固定的位移 0 和本次最高位移两条水平线拖动。 */
-    private void requireAnchored(CurveSegment segment, BigDecimal maximumDisplacement) {
+    /** 下端点必须保留在横轴，上端点允许管理员在纵轴正值范围内上下调整。 */
+    private void requireManualEndpoints(CurveSegment segment) {
         if (segment.first().displacementMm().compareTo(BigDecimal.ZERO) != 0
-                || segment.second().displacementMm().compareTo(maximumDisplacement) != 0) {
+                || segment.second().displacementMm().signum() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "拟合线下端点必须位于横轴，上端点必须位于本次最高位移");
+                    "拟合线下端点必须位于横轴，上端点位移必须大于0");
         }
     }
 

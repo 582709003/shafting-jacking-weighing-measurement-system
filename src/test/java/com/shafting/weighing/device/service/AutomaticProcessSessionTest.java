@@ -16,7 +16,7 @@ class AutomaticProcessSessionTest {
         SimulatorProperties properties = new SimulatorProperties();
         properties.setPrecheckMs(0);
         SimulationLimits limits = new SimulationLimits(
-                new BigDecimal("0.40"), new BigDecimal("10.00"), 1_200,
+                new BigDecimal("0.40"), 1_200,
                 new BigDecimal("2.0"), new BigDecimal("0.5"), 0);
         AutomaticProcessSession session = new AutomaticProcessSession(
                 1L, 1L, "TAIL_SHAFT", limits, properties);
@@ -39,7 +39,7 @@ class AutomaticProcessSessionTest {
         SimulatorProperties properties = new SimulatorProperties();
         properties.setPrecheckMs(0);
         SimulationLimits limits = new SimulationLimits(
-                new BigDecimal("0.40"), new BigDecimal("10.00"), 1_200,
+                new BigDecimal("0.40"), 1_200,
                 new BigDecimal("2.0"), new BigDecimal("0.5"), 100);
         AutomaticProcessSession session = new AutomaticProcessSession(
                 1L, 1L, "TAIL_SHAFT", limits, properties);
@@ -68,7 +68,7 @@ class AutomaticProcessSessionTest {
         properties.setLiftingMs(1_000);
         properties.setLoweringMs(1_000);
         SimulationLimits limits = new SimulationLimits(
-                new BigDecimal("0.40"), new BigDecimal("10.00"), 1_200,
+                new BigDecimal("0.40"), 1_200,
                 new BigDecimal("2.0"), new BigDecimal("0.5"), 100);
         AutomaticProcessSession session = new AutomaticProcessSession(
                 1L, 1L, "TAIL_SHAFT", limits, properties);

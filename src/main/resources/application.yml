@@ -25,10 +25,45 @@ mybatis-plus:
 
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      timeout: 720m
 
 app:
   bootstrap:
     admin-password: ${ADMIN_INITIAL_PASSWORD:Admin@123}
+  plc:
+    mode: ${DEVICE_MODE:SIMULATOR}
+    host: ${PLC_HOST:}
+    rack: ${PLC_RACK:}
+    slot: ${PLC_SLOT:}
+    connect-timeout-ms: ${PLC_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${PLC_READ_TIMEOUT_MS:3000}
+    write-timeout-ms: ${PLC_WRITE_TIMEOUT_MS:3000}
+    feedback-timeout-ms: ${PLC_FEEDBACK_TIMEOUT_MS:3000}
+    poll-interval-ms: ${PLC_POLL_INTERVAL_MS:200}
+    pulse-ms: ${PLC_PULSE_MS:200}
+    feedback-selected-channel: ${PLC_FEEDBACK_SELECTED_CHANNEL:}
+    feedback-mode: ${PLC_FEEDBACK_MODE:}
+    feedback-action: ${PLC_FEEDBACK_ACTION:}
+    feedback-run-state: ${PLC_FEEDBACK_RUN_STATE:}
+    feedback-process-stage: ${PLC_FEEDBACK_PROCESS_STAGE:}
+    feedback-sample-sequence: ${PLC_FEEDBACK_SAMPLE_SEQUENCE:}
+    feedback-fault-code: ${PLC_FEEDBACK_FAULT_CODE:}
+    zero-displacement:
+      TAIL_SHAFT: ${PLC_ZERO_TAIL_SHAFT:}
+      INTERMEDIATE_1: ${PLC_ZERO_INTERMEDIATE_1:}
+      INTERMEDIATE_2: ${PLC_ZERO_INTERMEDIATE_2:}
+      FLYWHEEL: ${PLC_ZERO_FLYWHEEL:}
+      MAIN_ENGINE_1: ${PLC_ZERO_MAIN_ENGINE_1:}
+      MAIN_ENGINE_2: ${PLC_ZERO_MAIN_ENGINE_2:}
+    manual-target:
+      TAIL_SHAFT: ${PLC_MANUAL_TARGET_TAIL_SHAFT:}
+      INTERMEDIATE_1: ${PLC_MANUAL_TARGET_INTERMEDIATE_1:}
+      INTERMEDIATE_2: ${PLC_MANUAL_TARGET_INTERMEDIATE_2:}
+      FLYWHEEL: ${PLC_MANUAL_TARGET_FLYWHEEL:}
+      MAIN_ENGINE_1: ${PLC_MANUAL_TARGET_MAIN_ENGINE_1:}
+      MAIN_ENGINE_2: ${PLC_MANUAL_TARGET_MAIN_ENGINE_2:}
   simulator:
     enabled: ${SIMULATOR_ENABLED:true}
     manual-enabled: ${MANUAL_SIMULATOR_ENABLED:true}

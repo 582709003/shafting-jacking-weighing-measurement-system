@@ -18,8 +18,6 @@ public record RealtimeSnapshot(
         String processStage,
         /** 当前位移，单位 mm，保留 0.01 mm 分度。 */
         BigDecimal displacementMm,
-        /** 当前压力，单位 MPa。 */
-        BigDecimal pressureMpa,
         /** 当前电机转速，单位 r/min。 */
         Integer motorRpm,
         /** 当前顶升力，单位 kN。 */

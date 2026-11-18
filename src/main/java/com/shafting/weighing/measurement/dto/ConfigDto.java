@@ -1,7 +1,13 @@
 package com.shafting.weighing.measurement.dto;
 
-import jakarta.validation.constraints.*;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -43,7 +49,7 @@ public final class ConfigDto {
             BigDecimal maxDisplacement,
             /** 模拟或设备运行转速，单位 r/min。 */
             Integer motorRpm,
-            /** 自动顶升累计力值间隔，单位 kN；例如 0.5 表示在 0.5kN、1.0kN 依次保持。 */
+            /** 自动顶升累计力值间隔，单位 kN，只允许 1～32767 的正整数。 */
             BigDecimal forceIntervalKn,
             /** 到达目标后的保持时间，单位秒。 */
             Integer holdSeconds) {
@@ -67,19 +73,22 @@ public final class ConfigDto {
     public record PointConfigRequest(
             /** 测量点编码，必须属于当前启用的六点集合。 */
             @NotBlank String pointCode,
-            /** 标准顶升力，单位 kN，可为 0。 */
+            /** 标准顶升力，单位 kN，必须大于 0。 */
             @NotNull(message = "标准值必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal standardForce,
-            /** 当前通道总值，单位 kN、精度 0.01；仅保存展示，可为 0。 */
+            /** 当前通道总值，单位 kN、精度 0.01；仅保存数据库，必须大于 0。 */
             @NotNull(message = "总值必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal totalValue,
             /** 顶升系数，必须大于 0。 */
             @NotNull(message = "顶升系数必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal jackingCoefficient,
-            /** 自动测试目标位移兼安全上限，单位 mm，可为 0。 */
+            /** 自动测试目标位移兼安全上限，单位 mm，必须大于 0。 */
             @NotNull(message = "自动目标位移必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal maxDisplacement,
-            /** 转速，单位 r/min，可为 0。 */
+            /** 转速，单位 r/min，必须为正整数。 */
             @NotNull(message = "顶升速度必须大于0且是整数") @Positive Integer motorRpm,
-            /** 自动顶升累计力值间隔，单位 kN，必须大于 0。 */
-            @NotNull(message = "力值间隔必须大于0且是整数") @Positive BigDecimal forceIntervalKn,
-            /** 保持时间，单位秒，可为 0。 */
+            /** 自动顶升累计力值间隔，单位 kN，只允许 1～32767 的正整数。 */
+            @NotNull(message = "力值间隔必须大于0且是整数")
+            @DecimalMin(value = "1", message = "力值间隔必须大于0且是整数")
+            @DecimalMax(value = "32767", message = "力值间隔不能超过32767kN")
+            @Digits(integer = 5, fraction = 0, message = "力值间隔必须是整数") BigDecimal forceIntervalKn,
+            /** 保持时间，单位秒，必须为正整数。 */
             @NotNull(message = "时间间隔必须大于0且是整数") @Positive Integer holdSeconds) {
     }
 

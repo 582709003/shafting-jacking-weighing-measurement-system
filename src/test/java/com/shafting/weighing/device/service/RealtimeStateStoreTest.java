@@ -35,7 +35,7 @@ class RealtimeStateStoreTest {
         RealtimeStateStore store = new RealtimeStateStore(redisTemplate,
                 JsonMapper.builder().addModule(new JavaTimeModule()).build());
         RealtimeSnapshot snapshot = new RealtimeSnapshot(7L, 3L, "TAIL_SHAFT", "RUNNING", "LIFTING",
-                new BigDecimal("0.20"), new BigDecimal("7.50"), 600,
+                new BigDecimal("0.20"), 600,
                 new BigDecimal("90.0"), Instant.EPOCH);
 
         store.save(snapshot);

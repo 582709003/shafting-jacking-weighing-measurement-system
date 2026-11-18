@@ -60,7 +60,11 @@ assert.ok(html.includes('id="manualPauseButton"') && html.includes('id="autoPaus
 assert.ok(html.includes('id="manualStopButton"') && html.includes('id="autoStopButton"'), "手动和自动动作均应支持停止");
 assert.ok(!html.includes('data-reading="pressure"') && !html.includes("顶升压力"), "实时数据区不应显示顶升压力");
 assert.ok(!js.includes('"maxPressure"') && !html.includes("压力上限"), "设置页和工作页不应提供压力上限参数");
-assert.ok(js.includes('["力值间隔", "kN", "forceIntervalKn", "0.001"]'), "设置页应以 kN 配置自动顶升力值间隔");
+assert.ok(js.includes('["力值间隔", "kN", "forceIntervalKn", "1"]')
+        && js.includes('力值间隔必须是 1～32767 kN 的整数'),
+"设置页应以 PLC INT 范围配置 kN 力值间隔");
+assert.ok(js.includes("controlCommandPending") && js.includes("指令下发中，请等待 PLC 确认"),
+        "控制命令等待 PLC 反馈期间应防止重复提交并显示等待状态");
 assert.ok(!js.includes('"压力间隔"'), "设置页不应继续使用 MPa 压力间隔");
 assert.ok(html.includes('id="valueChannelStrip"'), "显示数值页应支持选择六个通道");
 assert.ok(html.includes('id="valueTaskSelect"'), "显示数值页应提供已完成测量任务下拉框");
@@ -76,6 +80,13 @@ assert.ok(js.includes('/result/adjustment-coefficient') && js.includes('method: 
         "管理员调整系数修改接口未接入");
 assert.ok(!html.includes("上升压力") && !html.includes("下降压力"), "曲线页表格不应重复展示压力数据");
 assert.ok(html.includes('id="shaftCurveTaskSelect"') && html.includes('id="mainCurveTaskSelect"'), "两个曲线页均应提供已完成测量任务下拉框");
+for (const searchId of ["valueTaskSearch", "shaftCurveTaskSearch", "mainCurveTaskSearch"]) {
+    assert.ok(html.includes(`id="${searchId}"`), `任务选择区缺少模糊搜索框：${searchId}`);
+}
+assert.ok(js.includes('function filterTaskOptions(selectId, keyword)')
+        && js.includes('taskSearchText(task).includes(normalizedKeyword)')
+        && js.includes('input.addEventListener("input"'),
+        "三个任务下拉列表应复用任务名称、编号和完成时间的包含匹配逻辑");
 assert.ok(js.includes('/api/records/completed?pointCode='), "曲线页应按通道读取已完成测量任务");
 assert.ok(js.includes('/api/runs/${runId}/curve-fit') && js.includes('container.setFitState = fit =>'),
         "曲线页重新选择任务时应回显已保存的人工拟合端点");
@@ -87,7 +98,22 @@ assert.ok(js.includes('showCurveSaveNotice(chartId, "success"')
         "曲线调整保存应显示成功或失败信息并恢复按钮状态");
 assert.ok(js.includes('row.state === "COMPLETED"') && js.includes('data-record-run='),
         "测量记录页只能为完整完成的任务提供查看按钮");
-assert.ok(js.includes('state[kind][index][1]'), "拟合端点拖动时应锁定纵坐标");
+assert.ok(html.includes('id="recordPreviousPage"') && html.includes('id="recordNextPage"')
+        && html.includes('id="recordPageInfo"'),
+        "测量记录页应提供上一页、下一页和当前页信息");
+assert.ok(js.includes('params.set("page", String(page))')
+        && js.includes('params.set("size", String(RECORD_PAGE_SIZE))')
+        && js.includes('params.set("keyword", keyword)'),
+        "测量记录页应将页码、每页数量和搜索条件提交给后端分页接口");
+assert.ok(js.includes('const yValue = pixel =>')
+        && js.includes('index === 0 ? state[kind][index][1] : yValue(pixelY)'),
+        "拟合线上端点应支持上下左右拖动，下端点应继续锁定在横轴");
+assert.ok(html.includes("上端点可上下左右拖动 · 下端点仅可左右拖动"),
+        "曲线页应明确提示上下端点不同的拖动范围");
+assert.ok(html.includes('id="exportCurveCsvButton"')
+        && js.includes('q("#exportCurveCsvButton").addEventListener("click", exportCurveCsv)')
+        && js.includes('new Blob(["\\uFEFF", csv]'),
+        "曲线页导出按钮应将当前任务采样生成带 UTF-8 BOM 的 CSV 文件");
 assert.ok(js.includes('state.down = JSON.parse(JSON.stringify(defaults.down))')
         && js.includes('state.up = JSON.parse(JSON.stringify(defaults.up))'),
         "恢复自动拟合应使用当前测量记录生成的原始端点");

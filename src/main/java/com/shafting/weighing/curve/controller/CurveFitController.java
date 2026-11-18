@@ -49,7 +49,7 @@ public class CurveFitController {
      * 保存管理员在曲线页拖动端点后的人工拟合修订。
      *
      * @param runId 测量运行主键
-     * @param request 升、降拟合线的两个端点；纵坐标必须分别为 0 和本次最高位移
+     * @param request 升、降拟合线的两个端点；下端点位移必须为 0，上端点可上下左右调整且位移必须大于 0
      * @param authentication 当前管理员，用于审计
      * @return 新生成的 MANUAL 修订和重算结果
      */

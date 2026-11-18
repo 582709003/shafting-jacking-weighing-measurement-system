@@ -126,7 +126,7 @@
             </section>
             <section class="curve-task-filter value-task-filter" aria-label="显示数值已完成测量任务">
                 <label for="valueTaskSelect"><span>测量任务</span><b>选择已完成顶升和下降流程的任务</b></label>
-                <select id="valueTaskSelect"><option value="">请先选择通道</option></select>
+                <div class="task-select-tools"><input class="task-search" id="valueTaskSearch" data-task-search="valueTaskSelect" aria-label="搜索测量数值任务" placeholder="搜索任务名称、编号或完成时间" disabled><select id="valueTaskSelect"><option value="">请先选择通道</option></select></div>
                 <small id="valueTaskMeta">选择任务后显示该次标准值、测量值和偏差结果</small>
             </section>
             <div class="value-result-layout">
@@ -156,12 +156,12 @@
             <div class="curve-overview" id="shaftCurveTabs"></div>
             <section class="curve-task-filter" aria-label="轴系已完成测量任务">
                 <label for="shaftCurveTaskSelect"><span>测量任务</span><b>选择已完成顶升和下降流程的任务</b></label>
-                <select id="shaftCurveTaskSelect"><option value="">请先选择通道</option></select>
+                <div class="task-select-tools"><input class="task-search" id="shaftCurveTaskSearch" data-task-search="shaftCurveTaskSelect" aria-label="搜索轴系曲线任务" placeholder="搜索任务名称、编号或完成时间" disabled><select id="shaftCurveTaskSelect"><option value="">请先选择通道</option></select></div>
                 <small id="shaftCurveTaskMeta">选择任务后显示该次原始采样与曲线</small>
             </section>
             <div class="curve-workbench">
-                <section class="panel data-table-panel"><div class="panel-head"><div><p>已完成任务原始采样</p><h2 id="curveTableTitle">尾轴升降数据</h2></div><button class="ghost">导出 CSV</button></div><table class="data-table"><thead><tr><th>序号</th><th>上升位移</th><th>上升力</th><th>下降位移</th><th>下降力</th></tr></thead><tbody id="curveDataBody"></tbody></table></section>
-                <section class="panel chart-panel"><div class="panel-head"><div><p>交互曲线</p><h2>拖动拟合线的上、下端点进行人工修正</h2></div><span class="drag-tip">● 采样点平滑显示 · 端点仅可左右拖动 · 仅管理员可调整</span></div><div class="curve-chart" id="shaftCurveChart"></div><div class="fit-results"><span>P降 <b data-fit="down">--</b> kN</span><span>P升 <b data-fit="up">--</b> kN</span><span class="final">P <b data-fit="mean">--</b> kN</span></div></section>
+                <section class="panel data-table-panel"><div class="panel-head"><div><p>已完成任务原始采样</p><h2 id="curveTableTitle">尾轴升降数据</h2></div><button class="ghost" id="exportCurveCsvButton" disabled>导出 CSV</button></div><table class="data-table"><thead><tr><th>序号</th><th>上升位移</th><th>上升力</th><th>下降位移</th><th>下降力</th></tr></thead><tbody id="curveDataBody"></tbody></table></section>
+                <section class="panel chart-panel"><div class="panel-head"><div><p>交互曲线</p><h2>拖动拟合线的上、下端点进行人工修正</h2></div><span class="drag-tip">● 采样点平滑显示 · 上端点可上下左右拖动 · 下端点仅可左右拖动 · 仅管理员可调整</span></div><div class="curve-chart" id="shaftCurveChart"></div><div class="fit-results"><span>P降 <b data-fit="down">--</b> kN</span><span>P升 <b data-fit="up">--</b> kN</span><span class="final">P <b data-fit="mean">--</b> kN</span></div></section>
             </div>
         </section>
 
@@ -171,12 +171,12 @@
             <div class="curve-overview two" id="mainCurveTabs"></div>
             <section class="curve-task-filter" aria-label="主机已完成测量任务">
                 <label for="mainCurveTaskSelect"><span>测量任务</span><b>选择已完成顶升和下降流程的任务</b></label>
-                <select id="mainCurveTaskSelect"><option value="">请先选择通道</option></select>
+                <div class="task-select-tools"><input class="task-search" id="mainCurveTaskSearch" data-task-search="mainCurveTaskSelect" aria-label="搜索1号2号曲线任务" placeholder="搜索任务名称、编号或完成时间" disabled><select id="mainCurveTaskSelect"><option value="">请先选择通道</option></select></div>
                 <small id="mainCurveTaskMeta">选择任务后显示该次原始采样与曲线</small>
             </section>
             <div class="curve-workbench">
                 <section class="panel data-table-panel"><div class="panel-head"><div><p>已完成任务原始采样</p><h2 id="mainCurveTableTitle">1# 升降数据</h2></div></div><table class="data-table"><thead><tr><th>序号</th><th>上升位移</th><th>上升力</th><th>下降位移</th><th>下降力</th></tr></thead><tbody class="shared-data-body"></tbody></table></section>
-                <section class="panel chart-panel"><div class="panel-head"><div><p>交互曲线</p><h2>1# 顶升力—位移</h2></div><span class="drag-tip">0.01 mm · 采样点平滑显示 · 端点仅可左右拖动 · 仅管理员可调整</span></div><div class="curve-chart" id="mainCurveChart"></div><div class="fit-results"><span>P降 <b data-fit="down">--</b> kN</span><span>P升 <b data-fit="up">--</b> kN</span><span class="final">P <b data-fit="mean">--</b> kN</span></div></section>
+                <section class="panel chart-panel"><div class="panel-head"><div><p>交互曲线</p><h2>1# 顶升力—位移</h2></div><span class="drag-tip">0.01 mm · 采样点平滑显示 · 上端点可上下左右拖动 · 下端点仅可左右拖动 · 仅管理员可调整</span></div><div class="curve-chart" id="mainCurveChart"></div><div class="fit-results"><span>P降 <b data-fit="down">--</b> kN</span><span>P升 <b data-fit="up">--</b> kN</span><span class="final">P <b data-fit="mean">--</b> kN</span></div></section>
             </div>
         </section>
 
@@ -184,7 +184,7 @@
             <div class="page-title"><div><p>试验归档</p><h1>记录界面</h1></div><div class="title-actions"><button class="secondary" id="exportRecordsButton">导出全部记录</button><button class="primary" id="newTaskFromRecordsButton">新建测量任务</button></div></div>
             <div class="record-layout">
                 <aside class="panel record-folders"><div class="panel-head"><div><p>测量目录</p><h2>任务归档</h2></div></div><button class="folder active"><span>▣</span><b>全部测量任务</b><small id="recordCount">正在加载</small></button><div class="notice">项目文件夹归类规则尚未确认，当前按任务统一归档。</div></aside>
-                <section class="panel record-list"><div class="panel-head"><div><p>数据库记录</p><h2>测量记录</h2></div><div class="search-box">⌕ <input id="recordSearch" placeholder="搜索任务或测量点"></div></div><table class="data-table wide-table"><thead><tr><th>任务编号</th><th>任务名称</th><th>测量点</th><th>测量值</th><th>状态</th><th>开始时间</th><th></th></tr></thead><tbody id="recordTableBody"></tbody></table></section>
+                <section class="panel record-list"><div class="panel-head"><div><p>数据库记录</p><h2>测量记录</h2></div><div class="search-box">⌕ <input id="recordSearch" placeholder="搜索任务或测量点"></div></div><table class="data-table wide-table"><thead><tr><th>任务编号</th><th>任务名称</th><th>测量点</th><th>测量值</th><th>状态</th><th>开始时间</th><th></th></tr></thead><tbody id="recordTableBody"></tbody></table><div class="record-pagination"><span id="recordPageInfo" role="status" aria-live="polite">第 1 / 1 页</span><div><button id="recordPreviousPage" class="ghost" type="button">上一页</button><button id="recordNextPage" class="ghost" type="button">下一页</button></div></div></section>
             </div>
         </section>
 

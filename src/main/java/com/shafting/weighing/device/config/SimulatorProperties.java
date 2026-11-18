@@ -25,7 +25,6 @@ public class SimulatorProperties {
     /** 参数方案标准力为 0 时使用的模拟峰值力，单位 kN。 */
     private BigDecimal fallbackForceKn = new BigDecimal("180.0");
     /** 仅用于生成模拟压力采样的峰值，单位 MPa，不作为业务停止条件。 */
-    private BigDecimal fallbackPressureMpa = new BigDecimal("15.00");
     /** 手动设备模拟动作期间显示的电机转速，单位 r/min。 */
     private int manualMotorRpm = 800;
 
@@ -83,14 +82,6 @@ public class SimulatorProperties {
 
     public void setFallbackForceKn(BigDecimal fallbackForceKn) {
         this.fallbackForceKn = fallbackForceKn;
-    }
-
-    public BigDecimal getFallbackPressureMpa() {
-        return fallbackPressureMpa;
-    }
-
-    public void setFallbackPressureMpa(BigDecimal fallbackPressureMpa) {
-        this.fallbackPressureMpa = fallbackPressureMpa;
     }
 
     public int getManualMotorRpm() {

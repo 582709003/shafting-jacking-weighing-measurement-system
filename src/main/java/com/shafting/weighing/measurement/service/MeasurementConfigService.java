@@ -1,5 +1,6 @@
 package com.shafting.weighing.measurement.service;
 
+import com.shafting.weighing.device.service.DeviceCommandGateway;
 import com.shafting.weighing.measurement.dto.ConfigDto;
 import com.shafting.weighing.measurement.entity.MeasurementPoint;
 import com.shafting.weighing.measurement.entity.TestConfig;
@@ -16,16 +17,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.function.Function;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Service
 /** 六点参数方案的读取、完整性校验、版本更新和审计业务。 */
+@Service
 public class MeasurementConfigService {
 
     private static final int ENABLED = 1;
@@ -36,19 +39,22 @@ public class MeasurementConfigService {
     private final OperationLogMapper operationLogMapper;
     private final SysUserMapper sysUserMapper;
     private final ObjectMapper objectMapper;
+    private final DeviceCommandGateway deviceGateway;
 
     public MeasurementConfigService(MeasurementPointMapper measurementPointMapper,
                                     TestConfigMapper testConfigMapper,
                                     TestConfigPointMapper testConfigPointMapper,
                                     OperationLogMapper operationLogMapper,
                                     SysUserMapper sysUserMapper,
-                                    ObjectMapper objectMapper) {
+                                    ObjectMapper objectMapper,
+                                    DeviceCommandGateway deviceGateway) {
         this.measurementPointMapper = measurementPointMapper;
         this.testConfigMapper = testConfigMapper;
         this.testConfigPointMapper = testConfigPointMapper;
         this.operationLogMapper = operationLogMapper;
         this.sysUserMapper = sysUserMapper;
         this.objectMapper = objectMapper;
+        this.deviceGateway = deviceGateway;
     }
 
     /** 将启用的测量点实体转换为页面需要的基础信息。 */
@@ -121,7 +127,8 @@ public class MeasurementConfigService {
     }
 
     /**
-     * 新增或更新一个通道的参数，并递增方案版本、记录当前通道的审计快照。
+     * 新增或更新一个通道的数据库参数，并递增方案版本、记录当前通道的审计快照。
+     * 保存时不操作 PLC；接通手动或自动模式时才读取这些参数并下发。
      *
      * @param configId 参数方案主键
      * @param pointCode 页面当前 Tab 的测量点编码
@@ -138,6 +145,7 @@ public class MeasurementConfigService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "路径通道与请求通道不一致");
         }
         MeasurementPoint point = requireEnabledPoint(pointCode);
+        // 设置页只保存业务参数；接通手动或自动模式时再统一写入并回读 PLC。
         TestConfigPoint configPoint = testConfigPointMapper.selectOne(
                 Wrappers.<TestConfigPoint>lambdaQuery()
                         .eq(TestConfigPoint::getConfigId, configId)
@@ -175,6 +183,9 @@ public class MeasurementConfigService {
                                                      String username) {
         TestConfig config = requireConfig(configId);
         MeasurementPoint point = requireEnabledPoint(pointCode);
+        // 手动目标与自动目标使用不同 PLC 点；回读失败时数据库不得保存新值。
+        deviceGateway.writeManualTarget(pointCode, request.targetDisplacementMm());
+        registerManualTargetRollbackGuard(pointCode);
         TestConfigPoint configPoint = testConfigPointMapper.selectOne(
                 Wrappers.<TestConfigPoint>lambdaQuery()
                         .eq(TestConfigPoint::getConfigId, configId)
@@ -252,6 +263,21 @@ public class MeasurementConfigService {
                 configPoint.getManualTargetDisplacement(), configPoint.getJackingCoefficient(),
                 configPoint.getMaxDisplacement(), configPoint.getMotorRpm(),
                 configPoint.getForceIntervalKn(), configPoint.getHoldSeconds());
+    }
+
+    private void registerManualTargetRollbackGuard(String pointCode) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != TransactionSynchronization.STATUS_COMMITTED) {
+                    // 手动目标已回读成功但数据库未提交时，两侧参数已经不一致，必须要求重新保存。
+                    deviceGateway.markManualTargetUnsynchronized(pointCode);
+                }
+            }
+        });
     }
 
     private String serialize(Object request) {
