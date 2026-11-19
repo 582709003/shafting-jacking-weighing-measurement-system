@@ -18,7 +18,7 @@
             <span class="status good"><i></i>传感器 6/6</span>
             <span class="status idle"><i></i>设备待机</span>
         </div>
-        <div class="operator"><time id="clock">--:--:--</time><button id="logoutButton">正在读取用户</button></div>
+        <div class="operator"><time id="clock">--:--:--</time><button id="changePasswordButton" type="button">修改密码</button><button id="logoutButton">正在读取用户</button></div>
     </header>
 
     <nav class="module-nav" aria-label="主要模块">
@@ -29,6 +29,7 @@
         <button data-view="values">测量数值</button>
         <button data-view="records">测量记录</button>
         <button data-view="alarms" id="alarmNavButton">报警中心 <b id="alarmNavCount">0</b></button>
+        <button id="userManagementNavButton" hidden data-view="users">用户管理</button>
     </nav>
 
     <main>
@@ -209,8 +210,66 @@
                 <div class="record-pagination"><span id="alarmPageInfo" role="status" aria-live="polite">第 1 / 1 页</span><div><button id="alarmPreviousPage" class="ghost" type="button">上一页</button><button id="alarmNextPage" class="ghost" type="button">下一页</button></div></div>
             </section>
         </section>
+
+        <section class="page" data-page="users">
+            <div class="page-title"><div><p>账号与权限</p><h1>用户管理</h1></div><div class="title-actions"><button class="secondary" id="refreshUsersButton" type="button">刷新用户</button><button class="primary" id="openCreateUserDialogButton" type="button">新增用户</button></div></div>
+            <div class="notice notice-info" id="userManagementNotice" role="status" aria-live="polite">仅管理员可以新增用户、分配角色和重置其他用户密码。</div>
+            <section class="panel user-list-panel">
+                <div class="panel-head"><div><p>系统账号</p><h2>用户与角色</h2></div><span id="userCount">0 个用户</span></div>
+                <table class="data-table wide-table user-table"><thead><tr><th>登录账号</th><th>显示名称</th><th>状态</th><th>角色</th><th>操作</th></tr></thead><tbody id="userTableBody"></tbody></table>
+            </section>
+        </section>
     </main>
 </div>
+<dialog class="user-dialog" id="createUserDialog" aria-labelledby="createUserDialogTitle">
+    <form id="createUserForm">
+        <div class="dialog-head"><div><p>管理员操作</p><h2 id="createUserDialogTitle">新增用户</h2></div><button type="button" data-dialog-close aria-label="关闭新增用户对话框">×</button></div>
+        <div class="dialog-fields">
+            <label>登录账号<input id="createUsername" autocomplete="off" minlength="3" maxlength="64" pattern="[A-Za-z0-9._-]{3,64}" required><small>3～64 位字母、数字、点、下划线或连字符</small></label>
+            <label>显示名称<input id="createDisplayName" maxlength="64" required></label>
+            <label>初始密码<input id="createPassword" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label>
+            <label>确认密码<input id="createPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label>
+            <fieldset><legend>分配角色</legend><div class="role-options" id="createUserRoleOptions"></div></fieldset>
+        </div>
+        <p class="dialog-message" id="createUserMessage" role="status"></p>
+        <div class="dialog-actions"><button class="secondary" type="button" data-dialog-close>取消</button><button class="primary" type="submit">创建用户</button></div>
+    </form>
+</dialog>
+<dialog class="user-dialog" id="editUserRolesDialog" aria-labelledby="editUserRolesDialogTitle">
+    <form id="editUserRolesForm">
+        <div class="dialog-head"><div><p>角色分配</p><h2 id="editUserRolesDialogTitle">修改用户角色</h2></div><button type="button" data-dialog-close aria-label="关闭角色对话框">×</button></div>
+        <input id="editUserRolesId" type="hidden">
+        <p class="dialog-target" id="editUserRolesTarget"></p>
+        <fieldset><legend>至少选择一个角色</legend><div class="role-options" id="editUserRoleOptions"></div></fieldset>
+        <p class="dialog-message" id="editUserRolesMessage" role="status"></p>
+        <div class="dialog-actions"><button class="secondary" type="button" data-dialog-close>取消</button><button class="primary" type="submit">保存角色</button></div>
+    </form>
+</dialog>
+<dialog class="user-dialog" id="resetUserPasswordDialog" aria-labelledby="resetUserPasswordDialogTitle">
+    <form id="resetUserPasswordForm">
+        <div class="dialog-head"><div><p>管理员重置</p><h2 id="resetUserPasswordDialogTitle">重置用户密码</h2></div><button type="button" data-dialog-close aria-label="关闭重置密码对话框">×</button></div>
+        <input id="resetUserPasswordId" type="hidden">
+        <p class="dialog-target" id="resetUserPasswordTarget"></p>
+        <div class="dialog-fields">
+            <label>新密码<input id="resetUserPassword" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label>
+            <label>确认新密码<input id="resetUserPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label>
+        </div>
+        <p class="dialog-message" id="resetUserPasswordMessage" role="status"></p>
+        <div class="dialog-actions"><button class="secondary" type="button" data-dialog-close>取消</button><button class="primary" type="submit">确认重置</button></div>
+    </form>
+</dialog>
+<dialog class="user-dialog" id="changePasswordDialog" aria-labelledby="changePasswordDialogTitle">
+    <form id="changePasswordForm">
+        <div class="dialog-head"><div><p>当前账号</p><h2 id="changePasswordDialogTitle">修改密码</h2></div><button type="button" data-dialog-close aria-label="关闭修改密码对话框">×</button></div>
+        <div class="dialog-fields">
+            <label>原密码<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+            <label>新密码<input id="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label>
+            <label>确认新密码<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="64" required></label>
+        </div>
+        <p class="dialog-message" id="changePasswordMessage" role="status"></p>
+        <div class="dialog-actions"><button class="secondary" type="button" data-dialog-close>取消</button><button class="primary" type="submit">修改并重新登录</button></div>
+    </form>
+</dialog>
 <aside class="alarm-notification" id="alarmNotification" role="alert" aria-live="assertive" hidden>
     <button type="button" id="closeAlarmNotification" aria-label="关闭报警提示">×</button>
     <span>新报警</span><strong id="alarmNotificationTitle">设备报警</strong>

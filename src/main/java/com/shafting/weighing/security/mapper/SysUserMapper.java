@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Delete;
 
 import java.util.List;
 
@@ -34,4 +35,25 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
             SELECT #{userId}, id FROM sys_role WHERE role_code = 'ADMIN'
             """)
     int insertAdministratorRole(@Param("userId") Long userId);
+
+    /** 删除指定用户的全部角色关联，角色更新事务随后重新写入。 */
+    @Delete("DELETE FROM sys_user_role WHERE user_id = #{userId}")
+    int deleteUserRoles(@Param("userId") Long userId);
+
+    /** 按角色编码为指定用户建立一条角色关联。 */
+    @Insert("""
+            INSERT INTO sys_user_role (user_id, role_id)
+            SELECT #{userId}, id FROM sys_role WHERE role_code = #{roleCode}
+            """)
+    int insertUserRole(@Param("userId") Long userId, @Param("roleCode") String roleCode);
+
+    /** 统计当前拥有 ADMIN 角色且未删除、已启用的用户，防止移除最后一个管理员。 */
+    @Select("""
+            SELECT COUNT(DISTINCT u.id)
+            FROM sys_user u
+            JOIN sys_user_role ur ON ur.user_id = u.id
+            JOIN sys_role r ON r.id = ur.role_id
+            WHERE u.deleted = 0 AND u.status = 1 AND r.role_code = 'ADMIN'
+            """)
+    int countEnabledAdministrators();
 }

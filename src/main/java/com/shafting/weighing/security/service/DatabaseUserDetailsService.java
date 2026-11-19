@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 /** 从系统用户、用户角色表加载 Spring Security 登录信息。 */
@@ -29,8 +30,9 @@ public class DatabaseUserDetailsService implements UserDetailsService {
      * 按用户名加载启用用户及其角色；用户不存在或停用时拒绝登录。
      */
     public UserDetails loadUserByUsername(String username) {
+        String normalizedUsername = username.strip().toLowerCase(Locale.ROOT);
         SysUser sysUser = sysUserMapper.selectOne(Wrappers.<SysUser>lambdaQuery()
-                .eq(SysUser::getUsername, username));
+                .eq(SysUser::getUsername, normalizedUsername));
         if (sysUser == null || !Integer.valueOf(ENABLED).equals(sysUser.getStatus())) {
             throw new UsernameNotFoundException("用户不存在或已停用");
         }

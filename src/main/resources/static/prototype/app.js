@@ -36,6 +36,8 @@ let alarmGroup = "ACTIVE";
 let alarmEvents;
 let alarmAudioContext;
 const notifiedAlarmIds = new Set();
+let managedUsers = [];
+let availableUserRoles = [];
 let controlState;
 let configByPoint = new Map();
 let controlErrorMessage = "";
@@ -109,6 +111,7 @@ async function loadSession() {
     document.body.dataset.role = role || "VIEWER";
     q("#logoutButton").textContent = `${sessionContext.username} · 退出`;
     q("#adjustmentCoefficientCard").hidden = !sessionContext.roles.includes("ADMIN");
+    q("#userManagementNavButton").hidden = !sessionContext.roles.includes("ADMIN");
 }
 
 async function loadSettingsConfig() {
@@ -254,8 +257,17 @@ function selectedChannelState() {
 
 function syncCurrentRun() {
     const selected = selectedChannelState();
+    const manualAction = ["ASCENDING", "DESCENDING", "MANUAL_QUICK_RELEASE"].includes(selected?.action);
     const globalQuickRelease = controlState?.globalAction === "AUTO_QUICK_RELEASE";
-    const subscriptionKey = selected?.runId ? `run:${selected.runId}` : `point:${selected.pointCode}`;
+    const subscriptionKey = selected?.runId ? `run:${selected.runId}`
+            : (manualAction || globalQuickRelease) ? `point:${selected.pointCode}` : undefined;
+    // 待机不属于运行态，否则通道点击会被误判为动作中并禁止切换。
+    if (!subscriptionKey) {
+        realtimeEvents?.close();
+        realtimeEvents = undefined;
+        currentRun = undefined;
+        return;
+    }
     const state = selected.paused || (globalQuickRelease && controlState.globalPaused) ? "PAUSED" : "RUNNING";
     if (currentRun?.subscriptionKey !== subscriptionKey) {
         currentRun = { runId: selected.runId, pointCode: selected.pointCode,
@@ -1156,6 +1168,174 @@ function armAlarmSound() {
     alarmAudioContext.resume().catch(() => {});
 }
 
+function showUserNotice(type, message) {
+    const notice = q("#userManagementNotice");
+    notice.className = `notice notice-${type}`;
+    notice.textContent = message;
+}
+
+async function loadUsers() {
+    const [usersResponse, rolesResponse] = await Promise.all([
+        fetch("/api/users"), fetch("/api/users/roles")
+    ]);
+    if (!usersResponse.ok) throw new Error(await responseError(usersResponse, "读取用户失败"));
+    if (!rolesResponse.ok) throw new Error(await responseError(rolesResponse, "读取角色失败"));
+    managedUsers = await usersResponse.json();
+    availableUserRoles = await rolesResponse.json();
+    q("#userCount").textContent = `${managedUsers.length} 个用户`;
+    q("#userTableBody").innerHTML = managedUsers.map(user => {
+        const isSelf = user.username === sessionContext.username;
+        const roleTags = user.roles.map(role => `<span>${escapeHtml(role)}</span>`).join("");
+        return `<tr><td><strong>${escapeHtml(user.username)}</strong></td><td>${escapeHtml(user.displayName)}</td>
+            <td><span class="table-status ${user.status === 1 ? "saved" : "draft"}">${user.status === 1 ? "启用" : "停用"}</span></td>
+            <td><div class="role-tags">${roleTags}</div></td><td><div class="user-actions">
+            <button type="button" data-user-action="roles" data-user-id="${user.id}" ${isSelf ? "disabled title=\"不能修改自己的角色\"" : ""}>修改角色</button>
+            <button type="button" data-user-action="password" data-user-id="${user.id}" ${isSelf ? "disabled title=\"请使用顶部修改密码功能\"" : ""}>重置密码</button>
+            </div></td></tr>`;
+    }).join("");
+    qa("[data-user-action]").forEach(button => button.addEventListener("click", () => {
+        const user = managedUsers.find(item => item.id === Number(button.dataset.userId));
+        if (!user) return;
+        if (button.dataset.userAction === "roles") openEditUserRolesDialog(user);
+        else openResetUserPasswordDialog(user);
+    }));
+}
+
+function renderRoleOptions(containerId, selectedRoles = []) {
+    const selected = new Set(selectedRoles);
+    q(`#${containerId}`).innerHTML = availableUserRoles.map(role => `
+        <label><input type="checkbox" value="${escapeHtml(role.roleCode)}" ${selected.has(role.roleCode) ? "checked" : ""}>
+        <span>${escapeHtml(role.roleName)}<small>${escapeHtml(role.roleCode)}</small></span></label>`).join("");
+}
+
+function selectedRoles(containerId) {
+    return qa(`#${containerId} input:checked`).map(input => input.value);
+}
+
+function setDialogMessage(id, message, success = false) {
+    const element = q(`#${id}`);
+    element.textContent = message;
+    element.classList.toggle("success", success);
+}
+
+function passwordsMatch(newPassword, confirmPassword, messageId) {
+    if (newPassword !== confirmPassword) {
+        setDialogMessage(messageId, "两次输入的新密码不一致");
+        return false;
+    }
+    return true;
+}
+
+async function requestUserUpdate(url, method, body) {
+    const response = await fetch(url, {
+        method,
+        headers: {
+            "Content-Type": "application/json",
+            [sessionContext.csrfHeaderName]: sessionContext.csrfToken
+        },
+        body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error(await responseError(response, "用户操作失败"));
+    return response.status === 204 ? undefined : response.json();
+}
+
+async function openCreateUserDialog() {
+    if (!availableUserRoles.length) await loadUsers();
+    q("#createUserForm").reset();
+    renderRoleOptions("createUserRoleOptions");
+    setDialogMessage("createUserMessage", "");
+    q("#createUserDialog").showModal();
+}
+
+function openEditUserRolesDialog(user) {
+    q("#editUserRolesId").value = user.id;
+    q("#editUserRolesTarget").textContent = `${user.displayName}（${user.username}）`;
+    renderRoleOptions("editUserRoleOptions", user.roles);
+    setDialogMessage("editUserRolesMessage", "");
+    q("#editUserRolesDialog").showModal();
+}
+
+function openResetUserPasswordDialog(user) {
+    q("#resetUserPasswordForm").reset();
+    q("#resetUserPasswordId").value = user.id;
+    q("#resetUserPasswordTarget").textContent = `${user.displayName}（${user.username}）`;
+    setDialogMessage("resetUserPasswordMessage", "");
+    q("#resetUserPasswordDialog").showModal();
+}
+
+async function createUser(event) {
+    event.preventDefault();
+    const password = q("#createPassword").value;
+    const confirmPassword = q("#createPasswordConfirm").value;
+    if (!passwordsMatch(password, confirmPassword, "createUserMessage")) return;
+    const roles = selectedRoles("createUserRoleOptions");
+    if (!roles.length) {
+        setDialogMessage("createUserMessage", "至少选择一个角色");
+        return;
+    }
+    try {
+        const user = await requestUserUpdate("/api/users", "POST", {
+            username: q("#createUsername").value,
+            displayName: q("#createDisplayName").value,
+            password,
+            roles
+        });
+        q("#createUserDialog").close();
+        await loadUsers();
+        showUserNotice("success", `用户 ${user.username} 创建成功。`);
+    } catch (error) {
+        setDialogMessage("createUserMessage", error.message);
+    }
+}
+
+async function updateUserRoles(event) {
+    event.preventDefault();
+    const userId = q("#editUserRolesId").value;
+    const roles = selectedRoles("editUserRoleOptions");
+    if (!roles.length) {
+        setDialogMessage("editUserRolesMessage", "至少选择一个角色");
+        return;
+    }
+    try {
+        const user = await requestUserUpdate(`/api/users/${userId}/roles`, "PUT", { roles });
+        q("#editUserRolesDialog").close();
+        await loadUsers();
+        showUserNotice("success", `${user.username} 的角色已更新，下次登录时生效。`);
+    } catch (error) {
+        setDialogMessage("editUserRolesMessage", error.message);
+    }
+}
+
+async function resetUserPassword(event) {
+    event.preventDefault();
+    const newPassword = q("#resetUserPassword").value;
+    const confirmPassword = q("#resetUserPasswordConfirm").value;
+    if (!passwordsMatch(newPassword, confirmPassword, "resetUserPasswordMessage")) return;
+    const userId = q("#resetUserPasswordId").value;
+    try {
+        await requestUserUpdate(`/api/users/${userId}/password`, "PUT", { newPassword });
+        const target = q("#resetUserPasswordTarget").textContent;
+        q("#resetUserPasswordDialog").close();
+        showUserNotice("success", `${target} 密码已重置，已登录会话不会立即退出。`);
+    } catch (error) {
+        setDialogMessage("resetUserPasswordMessage", error.message);
+    }
+}
+
+async function changeOwnPassword(event) {
+    event.preventDefault();
+    const currentPassword = q("#currentPassword").value;
+    const newPassword = q("#newPassword").value;
+    const confirmPassword = q("#confirmPassword").value;
+    if (!passwordsMatch(newPassword, confirmPassword, "changePasswordMessage")) return;
+    try {
+        await requestUserUpdate("/api/users/me/password", "PUT", { currentPassword, newPassword });
+        location.href = "/login?passwordChanged";
+    } catch (error) {
+        setDialogMessage("changePasswordMessage", error.message);
+    }
+}
+
 function setupNavigation() {
     qa(".module-nav button").forEach(button => {
         button.addEventListener("click", () => {
@@ -1164,6 +1344,7 @@ function setupNavigation() {
             qa(".page").forEach(page => page.classList.toggle("active", page.dataset.page === button.dataset.view));
             if (button.dataset.view === "records") loadRecords().catch(() => {});
             if (button.dataset.view === "alarms") loadAlarms().catch(() => {});
+            if (button.dataset.view === "users") loadUsers().catch(showUserError);
             if (button.dataset.view === "values") q("#valueChannelStrip button.active")?.click();
             if (button.dataset.view === "shaft-curves") q("#shaftCurveTabs .curve-tab.active")?.click();
             if (button.dataset.view === "main-curves") q("#mainCurveTabs .curve-tab.active")?.click();
@@ -1171,7 +1352,7 @@ function setupNavigation() {
     });
     const requestedView = new URLSearchParams(location.search).get("view");
     const requestedButton = requestedView && q(`.module-nav button[data-view="${requestedView}"]`);
-    requestedButton?.click();
+    if (requestedButton && !requestedButton.hidden) requestedButton.click();
 }
 
 function selectAlarmGroup(group) {
@@ -1189,6 +1370,11 @@ function selectAlarmGroup(group) {
 
 function setupAuthenticatedActions() {
     q("#saveSettingsButton").addEventListener("click", saveSettingsConfig);
+    q("#changePasswordButton").addEventListener("click", () => {
+        q("#changePasswordForm").reset();
+        setDialogMessage("changePasswordMessage", "");
+        q("#changePasswordDialog").showModal();
+    });
     q("#logoutButton").addEventListener("click", async () => {
         await fetch("/logout", {
             method: "POST",
@@ -1196,6 +1382,16 @@ function setupAuthenticatedActions() {
         });
         location.href = "/login?logout";
     });
+    q("#refreshUsersButton").addEventListener("click", () => loadUsers()
+            .then(() => showUserNotice("success", "用户列表已刷新。"))
+            .catch(showUserError));
+    q("#openCreateUserDialogButton").addEventListener("click", () => openCreateUserDialog()
+            .catch(showUserError));
+    q("#createUserForm").addEventListener("submit", createUser);
+    q("#editUserRolesForm").addEventListener("submit", updateUserRoles);
+    q("#resetUserPasswordForm").addEventListener("submit", resetUserPassword);
+    q("#changePasswordForm").addEventListener("submit", changeOwnPassword);
+    qa("[data-dialog-close]").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
     q("#manualModeButton").addEventListener("click", () => sendControlCommand(
             selectedChannelState().mode === "MANUAL" ? "MANUAL_DISCONNECT" : "MANUAL_CONNECT")
             .catch(showControlError));
@@ -1293,6 +1489,10 @@ function showAlarmError(error) {
     q("#alarmResultCount").textContent = error.message;
 }
 
+function showUserError(error) {
+    showUserNotice("error", error.message);
+}
+
 function startClock() {
     const render = () => q("#clock").textContent = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date());
     render();
@@ -1302,6 +1502,8 @@ function startClock() {
 async function init() {
     window.addEventListener("pointerdown", armAlarmSound, { once: true });
     window.addEventListener("keydown", armAlarmSound, { once: true });
+    // 报警监听优先建立，不能因其他页面数据初始化失败而失效。
+    connectAlarmEvents();
     renderChannelSelectors();
     renderSettingsTabs();
     renderSettingsForm();
@@ -1322,7 +1524,6 @@ async function init() {
     setupNavigation();
     setupAuthenticatedActions();
     await Promise.all([loadRecords(), loadAlarms()]);
-    connectAlarmEvents();
     setInterval(() => loadControlState().catch(() => {}), 1000);
     startClock();
 }

@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "../../..");
 const html = fs.readFileSync(path.join(root, "src/main/resources/static/prototype/index.html"), "utf8");
@@ -38,5 +39,38 @@ assert.match(styles, /\.state-button\.is-on/);
 assert.match(styles, /\.state-button:disabled/);
 assert.match(styles, /@keyframes hydraulic-flow/);
 assert.match(styles, /prefers-reduced-motion/);
+
+const syncStart = script.indexOf("function syncCurrentRun()");
+const syncEnd = script.indexOf("function subscribeRealtime", syncStart);
+const syncSource = script.slice(syncStart, syncEnd);
+
+function syncRunFor(action, runId = null) {
+    const subscribedUrls = [];
+    const context = {
+        controlState: {
+            globalAction: "IDLE",
+            globalPaused: false,
+            channels: [{ pointCode: "TAIL_SHAFT", action, runId, paused: false }]
+        },
+        activePointCode: "TAIL_SHAFT",
+        currentRun: undefined,
+        realtimeEvents: undefined,
+        subscribeRealtime: url => subscribedUrls.push(url)
+    };
+    vm.runInNewContext(`
+        function selectedChannelState() {
+            return controlState.channels.find(channel => channel.pointCode === activePointCode);
+        }
+        ${syncSource}
+        syncCurrentRun();
+    `, context);
+    return { currentRun: context.currentRun, subscribedUrls };
+}
+
+assert.equal(syncRunFor("IDLE").currentRun, undefined, "待机通道不应被误判为运行中，否则无法切换通道");
+assert.deepEqual(syncRunFor("ASCENDING").subscribedUrls, ["/api/points/TAIL_SHAFT/events"],
+        "手动动作期间应继续订阅当前通道实时数据");
+assert.deepEqual(syncRunFor("AUTO_TEST", 9).subscribedUrls, ["/api/runs/9/events"],
+        "自动测量期间应按运行记录订阅实时数据");
 
 console.log("控制面板原型结构与状态样式检查通过");

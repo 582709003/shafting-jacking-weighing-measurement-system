@@ -14,7 +14,7 @@ const [html, css, js] = await Promise.all([
     readFile(path.join(prototypeDir, "app.js"), "utf8")
 ]);
 
-for (const page of ["work", "settings", "values", "shaft-curves", "main-curves", "records", "alarms"]) {
+for (const page of ["work", "settings", "values", "shaft-curves", "main-curves", "records", "alarms", "users"]) {
     assert.match(html, new RegExp(`data-page="${page}"`), `缺少页面：${page}`);
 }
 
@@ -118,10 +118,25 @@ assert.ok(html.includes('id="alarmNotification"') && html.includes('aria-live="a
 assert.ok(js.includes('new EventSource("/api/alarms/events")')
         && js.includes('addEventListener("alarm"') && js.includes("playAlarmSound"),
         "页面应通过 SSE 接收新报警并播放一次声音");
+const initSource = js.slice(js.indexOf("async function init()"), js.indexOf("init().catch"));
+assert.ok(initSource.indexOf("connectAlarmEvents();") < initSource.indexOf("await loadSession();"),
+        "报警 SSE 应在其他初始化请求之前连接，不能因列表或控制状态加载失败而失效");
 assert.ok(js.includes('params.set("statusGroup", alarmGroup)')
         && js.includes('params.set("alarmLevel"') && js.includes('params.set("startTime"')
         && js.includes('params.set("endTime"'), "报警查询应提交状态、级别和发生时间范围");
 assert.ok(!js.includes('setInterval(() => loadAlarms'), "报警列表不得定时自动刷新");
+assert.ok(html.includes('id="userManagementNavButton" hidden')
+        && html.includes('id="changePasswordButton"'), "用户管理入口应仅向管理员显示，所有用户应能打开修改密码对话框");
+for (const dialogId of ["createUserDialog", "editUserRolesDialog", "resetUserPasswordDialog", "changePasswordDialog"]) {
+    assert.ok(html.includes(`id="${dialogId}"`), `缺少用户管理对话框：${dialogId}`);
+}
+assert.ok(js.includes('sessionContext.roles.includes("ADMIN")')
+        && js.includes('q("#userManagementNavButton").hidden'), "用户管理入口必须根据登录角色控制显示");
+for (const endpoint of ['/api/users"', '/api/users/roles', '/roles`', '/password`', '/api/users/me/password']) {
+    assert.ok(js.includes(endpoint), `用户管理页面缺少接口调用：${endpoint}`);
+}
+assert.ok(js.includes('newPassword !== confirmPassword')
+        && js.includes('location.href = "/login?passwordChanged"'), "密码表单应校验二次输入并在本人改密后重新登录");
 assert.ok(js.includes('const yValue = pixel =>')
         && js.includes('index === 0 ? state[kind][index][1] : yValue(pixelY)'),
         "拟合线上端点应支持上下左右拖动，下端点应继续锁定在横轴");
