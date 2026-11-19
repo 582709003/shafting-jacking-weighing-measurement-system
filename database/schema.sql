@@ -190,8 +190,10 @@ CREATE TABLE IF NOT EXISTS alarm_event (
     source_name VARCHAR(100) NOT NULL,
     message VARCHAR(255) NOT NULL,
     status VARCHAR(24) NOT NULL,
+    deduplication_key VARCHAR(64),
     occurred_at TIMESTAMP(3) NOT NULL,
-    updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+    updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    CONSTRAINT uk_alarm_open_deduplication UNIQUE (deduplication_key)
 );
 
 CREATE TABLE IF NOT EXISTS alarm_action (

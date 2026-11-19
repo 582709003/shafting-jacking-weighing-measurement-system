@@ -4,4 +4,4 @@ target/
 *.iml
 node_modules/
 frontend/dist/
-
+/deployment/

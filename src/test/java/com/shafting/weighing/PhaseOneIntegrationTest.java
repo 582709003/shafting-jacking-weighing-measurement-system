@@ -197,7 +197,7 @@ class PhaseOneIntegrationTest {
                         .content(pointRequest("TAIL_SHAFT", "125.00")))
                 .andExpect(status().isOk());
 
-        verify(deviceCommandGateway, never()).writePointConfiguration(anyString(), any());
+        verify(deviceCommandGateway, never()).writeAutomaticConfiguration(anyString(), any());
     }
 
     @Test
@@ -236,7 +236,7 @@ class PhaseOneIntegrationTest {
 
     @Test
     @WithMockUser(username = "engineer", roles = "ENGINEER")
-    void shouldInsertThenUpdateManualTargetForSelectedPoint() throws Exception {
+    void shouldSaveManualTargetWithoutWritingPlc() throws Exception {
         jdbcTemplate.update("DELETE FROM test_config_point WHERE config_id = 1 AND point_id = 1");
 
         saveManualTarget("0.18");
@@ -248,6 +248,7 @@ class PhaseOneIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT manual_target_displacement FROM test_config_point WHERE config_id = 1 AND point_id = 1",
                 BigDecimal.class)).isEqualByComparingTo("0.26");
+        verify(deviceCommandGateway, never()).writeManualTarget(anyString(), any());
     }
 
     @Test

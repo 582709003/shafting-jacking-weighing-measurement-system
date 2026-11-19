@@ -8,14 +8,14 @@ import com.shafting.weighing.alarm.mapper.AlarmEventMapper;
 import com.shafting.weighing.control.service.ControlCommandService;
 import com.shafting.weighing.security.mapper.SysUserMapper;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,20 +36,57 @@ public class AlarmService {
     private final AlarmActionMapper actionMapper;
     private final SysUserMapper userMapper;
     private final ControlCommandService controlCommandService;
+    private final AlarmPublisher alarmPublisher;
     /** 当前仍为 1 的 PLC 报警信号；信号未恢复时不允许人工标记恢复。 */
     private final Set<String> activePlcSignals = ConcurrentHashMap.newKeySet();
 
     public AlarmService(AlarmEventMapper eventMapper, AlarmActionMapper actionMapper, SysUserMapper userMapper,
-                        ControlCommandService controlCommandService) {
+                        ControlCommandService controlCommandService, AlarmPublisher alarmPublisher) {
         this.eventMapper = eventMapper;
         this.actionMapper = actionMapper;
         this.userMapper = userMapper;
         this.controlCommandService = controlCommandService;
+        this.alarmPublisher = alarmPublisher;
     }
 
-    /** 按发生时间倒序读取报警列表。 */
-    public List<AlarmEvent> list() {
-        return eventMapper.selectList(Wrappers.<AlarmEvent>lambdaQuery().orderByDesc(AlarmEvent::getOccurredAt));
+    /** 注册新报警实时通知连接，不重放连接前已经存在的报警。 */
+    public SseEmitter subscribe() {
+        return alarmPublisher.subscribe();
+    }
+
+    /**
+     * 按活动、处理中或已关闭页签分页筛选报警。
+     *
+     * @param statusGroup ACTIVE、PROCESSING 或 CLOSED
+     * @param keyword 报警编码、来源或内容关键词
+     * @param alarmLevel 报警级别，空字符串表示全部
+     * @param startTime 报警发生时间下限，可为空
+     * @param endTime 报警发生时间上限，可为空
+     * @param page 页码，从1开始
+     * @param size 每页数量，限制为1～100
+     * @return 当前页报警及三个页签总数
+     */
+    public AlarmDto.PageResponse page(String statusGroup, String keyword, String alarmLevel,
+                                      LocalDateTime startTime, LocalDateTime endTime, int page, int size) {
+        String normalizedGroup = statusGroup == null ? "ACTIVE" : statusGroup.strip().toUpperCase();
+        if (!Set.of("ACTIVE", "PROCESSING", "CLOSED").contains(normalizedGroup)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "报警状态页签不正确");
+        }
+        if (startTime != null && endTime != null && startTime.isAfter(endTime)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "报警开始时间不能晚于结束时间");
+        }
+        String normalizedKeyword = keyword == null ? "" : keyword.strip();
+        String normalizedLevel = alarmLevel == null ? "" : alarmLevel.strip().toUpperCase();
+        int pageSize = Math.min(Math.max(size, 1), 100);
+        long total = eventMapper.countPage(normalizedGroup, normalizedKeyword, normalizedLevel, startTime, endTime);
+        int totalPages = Math.max(1, (int) Math.ceil(total / (double) pageSize));
+        int currentPage = Math.min(Math.max(page, 1), totalPages);
+        long offset = (long) (currentPage - 1) * pageSize;
+        return new AlarmDto.PageResponse(eventMapper.selectPage(normalizedGroup, normalizedKeyword,
+                normalizedLevel, startTime, endTime, offset, pageSize), currentPage, pageSize, total, totalPages,
+                eventMapper.countByStatus("ACTIVE"),
+                eventMapper.countByStatus("ACKNOWLEDGED") + eventMapper.countByStatus("RECOVERED"),
+                eventMapper.countByStatus("CLOSED"));
     }
 
     /** 组合报警当前状态和全部处理动作。 */
@@ -91,8 +128,13 @@ public class AlarmService {
         actionMapper.insert(action);
         event.setStatus(transition.to());
         event.setUpdatedAt(now);
+        if ("CLOSED".equals(transition.to())) {
+            // 关闭后释放数据库防重键，允许同一PLC报警下一次重新形成独立事件。
+            event.setDeduplicationKey(null);
+        }
         eventMapper.updateById(event);
         if ("CLOSED".equals(event.getStatus())) {
+            eventMapper.clearDeduplicationKey(event.getId());
             // 仅当最后一条报警关闭后解除锁定，且不会自动恢复模式或动作。
             controlCommandService.clearAlarmLockWhenSafe();
         }
@@ -115,6 +157,7 @@ public class AlarmService {
         eventMapper.insert(event);
         // 报警入库后立即执行全局停机，快泄动作也不能例外。
         controlCommandService.emergencyStop(event.getAlarmCode());
+        publish(event);
         return detail(event.getId());
     }
 
@@ -122,8 +165,7 @@ public class AlarmService {
      * PLC 轮询检测到通讯故障或设备故障时创建报警并执行全局停机。
      * 同一未关闭报警只创建一次，避免 200 ms 轮询持续产生重复记录。
      */
-    @Transactional
-    public void activateFromPlc(String alarmCode, String sourceName, String message) {
+    public synchronized void activateFromPlc(String alarmCode, String sourceName, String message) {
         if (eventMapper.selectOpenByCode(alarmCode) != null) {
             return;
         }
@@ -135,8 +177,15 @@ public class AlarmService {
         event.setStatus("ACTIVE");
         event.setOccurredAt(LocalDateTime.now());
         event.setUpdatedAt(LocalDateTime.now());
-        eventMapper.insert(event);
+        event.setDeduplicationKey(alarmCode);
+        try {
+            eventMapper.insert(event);
+        } catch (DuplicateKeyException exception) {
+            // 数据库唯一键负责多实例并发兜底；另一实例已创建时不重复停机和推送。
+            return;
+        }
         controlCommandService.emergencyStop(alarmCode);
+        publish(event);
     }
 
     /**
@@ -150,7 +199,6 @@ public class AlarmService {
      * @param sourceName 报警来源名称
      * @param message 页面报警说明
      */
-    @Transactional
     public void updatePlcSignal(String alarmCode, boolean active, String sourceName, String message) {
         if (!active) {
             activePlcSignals.remove(alarmCode);
@@ -158,6 +206,12 @@ public class AlarmService {
         }
         activePlcSignals.add(alarmCode);
         activateFromPlc(alarmCode, sourceName, message);
+    }
+
+    private void publish(AlarmEvent event) {
+        alarmPublisher.publish(new AlarmDto.NotificationResponse(event.getId(), event.getAlarmCode(),
+                event.getAlarmLevel(), event.getSourceName(), event.getMessage(), event.getOccurredAt(),
+                eventMapper.countByStatus("ACTIVE")));
     }
 
     private AlarmEvent requireEvent(Long id) {

@@ -28,18 +28,17 @@ class DeviceCommandGatewayPlcTest {
     void shouldSelectChannelBeforeConnectingManualMode() {
         PlcProperties properties = plcProperties();
         S7PlcClient client = mock(S7PlcClient.class);
-        when(client.readValues(anyMap())).thenReturn(configurationReadBack(248));
         DeviceCommandGateway gateway = new DeviceCommandGateway(properties, client);
 
-        gateway.connectMode("INTERMEDIATE_1", ControlDto.ControlMode.MANUAL, pointConfiguration());
+        gateway.connectMode("INTERMEDIATE_1", ControlDto.ControlMode.MANUAL);
 
         InOrder order = inOrder(client);
         order.verify(client).pulse("%DB100.DBX2.2:BOOL");
         order.verify(client).awaitInt("%DB101.DBW0:INT", 3, properties.getFeedbackTimeoutMs());
-        order.verify(client).writeValues(anyMap());
-        order.verify(client).readValues(anyMap());
         order.verify(client).pulse("%DB100.DBX0.0:BOOL");
         order.verify(client).awaitInt("%DB101.DBW2:INT", 1, properties.getFeedbackTimeoutMs());
+        verify(client, never()).writeValues(anyMap());
+        verify(client, never()).readValues(anyMap());
     }
 
     @Test
@@ -64,42 +63,35 @@ class DeviceCommandGatewayPlcTest {
                 .when(client).awaitInt("%DB101.DBW0:INT", 3, properties.getFeedbackTimeoutMs());
         DeviceCommandGateway gateway = new DeviceCommandGateway(properties, client);
 
-        assertThatThrownBy(() -> gateway.connectMode(
-                "INTERMEDIATE_1", ControlDto.ControlMode.MANUAL, pointConfiguration()))
+        assertThatThrownBy(() -> gateway.connectMode("INTERMEDIATE_1", ControlDto.ControlMode.MANUAL))
                 .isInstanceOf(ResponseStatusException.class);
 
         verify(client, never()).pulse("%DB100.DBX0.0:BOOL");
     }
 
     @Test
-    void shouldNotSendModeCommandWhenConfigurationReadBackDiffers() {
+    void shouldRejectAutomaticConfigurationWhenReadBackDiffers() {
         PlcProperties properties = plcProperties();
         S7PlcClient client = mock(S7PlcClient.class);
         when(client.readValues(anyMap())).thenReturn(Map.of(
-                "%DB100.DBD248:REAL", new BigDecimal("99"),
-                "%DB100.DBD252:REAL", BigDecimal.ONE,
-                "%DB100.DBD256:REAL", new BigDecimal("0.40"),
+                "%DB100.DBD256:REAL", new BigDecimal("0.99"),
                 "%DB100.DBD260:REAL", new BigDecimal("1200"),
                 "%DB100.DBW264:INT", new BigDecimal("20"),
                 "%DB100.DBD266:REAL", new BigDecimal("5")));
         DeviceCommandGateway gateway = new DeviceCommandGateway(properties, client);
 
-        assertThatThrownBy(() -> gateway.connectMode(
-                "INTERMEDIATE_1", ControlDto.ControlMode.MANUAL, pointConfiguration()))
+        assertThatThrownBy(() -> gateway.writeAutomaticConfiguration(
+                "INTERMEDIATE_1", automaticConfiguration()))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("PLC 参数回读不一致");
-
-        verify(client, never()).pulse("%DB100.DBX0.0:BOOL");
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void shouldWriteAndReadBackOnlyPlcConfigurationFields() {
+    void shouldWriteAndReadBackOnlyAutomaticControlFields() {
         PlcProperties properties = plcProperties();
         S7PlcClient client = mock(S7PlcClient.class);
         Map<String, BigDecimal> readBack = Map.of(
-                "%DB100.DBD196:REAL", new BigDecimal("100"),
-                "%DB100.DBD200:REAL", BigDecimal.ONE,
                 "%DB100.DBD204:REAL", new BigDecimal("0.40"),
                 "%DB100.DBD208:REAL", new BigDecimal("1200"),
                 "%DB100.DBW212:INT", new BigDecimal("20"),
@@ -107,15 +99,31 @@ class DeviceCommandGatewayPlcTest {
         when(client.readValues(anyMap())).thenReturn(readBack);
         DeviceCommandGateway gateway = new DeviceCommandGateway(properties, client);
 
-        gateway.writePointConfiguration("TAIL_SHAFT", new DeviceCommandGateway.PointConfiguration(
-                new BigDecimal("100"), BigDecimal.ONE, new BigDecimal("0.40"),
-                new BigDecimal("1200"), 20, new BigDecimal("5")));
+        gateway.writeAutomaticConfiguration("TAIL_SHAFT", automaticConfiguration());
 
         ArgumentCaptor<Map<String, Object>> writes = ArgumentCaptor.forClass(Map.class);
         verify(client).writeValues(writes.capture());
-        assertThat(writes.getValue()).hasSize(6)
+        assertThat(writes.getValue()).hasSize(4)
                 .containsEntry("%DB100.DBW212:INT", 20)
-                .doesNotContainKey("totalValue");
+                .doesNotContainKeys("%DB100.DBD196:REAL", "%DB100.DBD200:REAL");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldWriteAndReadBackManualTarget() {
+        PlcProperties properties = plcProperties();
+        properties.setManualTarget(Map.of("TAIL_SHAFT", "%DB101.DBD20:REAL"));
+        S7PlcClient client = mock(S7PlcClient.class);
+        when(client.readValues(anyMap())).thenReturn(
+                Map.of("%DB101.DBD20:REAL", new BigDecimal("0.25")));
+        DeviceCommandGateway gateway = new DeviceCommandGateway(properties, client);
+
+        gateway.writeManualTarget("TAIL_SHAFT", new BigDecimal("0.25"));
+
+        ArgumentCaptor<Map<String, Object>> writes = ArgumentCaptor.forClass(Map.class);
+        verify(client).writeValues(writes.capture());
+        assertThat(writes.getValue()).containsExactly(
+                Map.entry("%DB101.DBD20:REAL", 0.25F));
     }
 
     private PlcProperties plcProperties() {
@@ -126,19 +134,8 @@ class DeviceCommandGatewayPlcTest {
         return properties;
     }
 
-    private DeviceCommandGateway.PointConfiguration pointConfiguration() {
-        return new DeviceCommandGateway.PointConfiguration(
-                new BigDecimal("100"), BigDecimal.ONE, new BigDecimal("0.40"),
-                new BigDecimal("1200"), 20, new BigDecimal("5"));
-    }
-
-    private Map<String, BigDecimal> configurationReadBack(int startOffset) {
-        return Map.of(
-                "%DB100.DBD" + startOffset + ":REAL", new BigDecimal("100"),
-                "%DB100.DBD" + (startOffset + 4) + ":REAL", BigDecimal.ONE,
-                "%DB100.DBD" + (startOffset + 8) + ":REAL", new BigDecimal("0.40"),
-                "%DB100.DBD" + (startOffset + 12) + ":REAL", new BigDecimal("1200"),
-                "%DB100.DBW" + (startOffset + 16) + ":INT", new BigDecimal("20"),
-                "%DB100.DBD" + (startOffset + 18) + ":REAL", new BigDecimal("5"));
+    private DeviceCommandGateway.AutomaticConfiguration automaticConfiguration() {
+        return new DeviceCommandGateway.AutomaticConfiguration(
+                new BigDecimal("0.40"), new BigDecimal("1200"), 20, new BigDecimal("5"));
     }
 }

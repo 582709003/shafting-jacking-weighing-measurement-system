@@ -28,7 +28,7 @@
         <button data-view="main-curves">1# / 2# 曲线</button>
         <button data-view="values">测量数值</button>
         <button data-view="records">测量记录</button>
-        <button data-view="alarms">报警中心 <b>2</b></button>
+        <button data-view="alarms" id="alarmNavButton">报警中心 <b id="alarmNavCount">0</b></button>
     </nav>
 
     <main>
@@ -190,11 +190,32 @@
 
         <section class="page" data-page="alarms">
             <div class="page-title"><div><p>设备事件</p><h1>报警界面</h1></div><div class="title-actions"><button class="secondary" id="refreshAlarmsButton">刷新报警</button></div></div>
-            <div class="alarm-summary"><article class="critical"><span>活动报警</span><strong id="activeAlarmCount">0</strong><small>需管理员确认</small></article><article><span>报警总数</span><strong id="totalAlarmCount">0</strong><small>含历史记录</small></article><article><span>数据来源</span><strong>模拟</strong><small>真实 PLC 尚未接入</small></article><article><span>处理流程</span><strong>3步</strong><small>确认、恢复、关闭</small></article></div>
-            <section class="panel"><div class="panel-head"><div><p>实时报警</p><h2>报警与处理记录</h2></div></div><table class="data-table wide-table alarm-table"><thead><tr><th>级别</th><th>发生时间</th><th>设备 / 通道</th><th>报警内容</th><th>当前状态</th><th></th></tr></thead><tbody id="alarmTableBody"></tbody></table></section>
+            <div class="alarm-summary"><article class="critical"><span>活动报警</span><strong id="activeAlarmCount">0</strong><small>尚未确认</small></article><article><span>处理中报警</span><strong id="processingAlarmCount">0</strong><small>已确认但尚未关闭</small></article><article><span>已关闭报警</span><strong id="closedAlarmCount">0</strong><small>历史处理记录</small></article></div>
+            <section class="panel alarm-workbench">
+                <div class="alarm-tabs" role="tablist" aria-label="报警状态">
+                    <button class="active" type="button" data-alarm-group="ACTIVE" role="tab" aria-selected="true">活动报警</button>
+                    <button type="button" data-alarm-group="PROCESSING" role="tab" aria-selected="false">处理中报警</button>
+                    <button type="button" data-alarm-group="CLOSED" role="tab" aria-selected="false">已关闭报警</button>
+                </div>
+                <div class="alarm-filters" aria-label="报警筛选条件">
+                    <label>关键词<input id="alarmKeyword" placeholder="报警编码、来源或内容"></label>
+                    <label>报警级别<select id="alarmLevel"><option value="">全部级别</option><option value="CRITICAL">CRITICAL</option><option value="WARNING">WARNING</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option></select></label>
+                    <label>开始时间<input id="alarmStartTime" type="datetime-local"></label>
+                    <label>结束时间<input id="alarmEndTime" type="datetime-local"></label>
+                    <div><button class="primary" id="queryAlarmsButton" type="button">查询</button><button class="secondary" id="resetAlarmFiltersButton" type="button">重置</button></div>
+                </div>
+                <div class="panel-head alarm-table-head"><div><p>报警记录</p><h2 id="alarmTableTitle">活动报警</h2></div><span id="alarmResultCount">0 条</span></div>
+                <table class="data-table wide-table alarm-table"><thead><tr><th>级别</th><th>发生时间</th><th>报警编码</th><th>设备 / 通道</th><th>报警内容</th><th>当前状态</th><th></th></tr></thead><tbody id="alarmTableBody"></tbody></table>
+                <div class="record-pagination"><span id="alarmPageInfo" role="status" aria-live="polite">第 1 / 1 页</span><div><button id="alarmPreviousPage" class="ghost" type="button">上一页</button><button id="alarmNextPage" class="ghost" type="button">下一页</button></div></div>
+            </section>
         </section>
     </main>
 </div>
+<aside class="alarm-notification" id="alarmNotification" role="alert" aria-live="assertive" hidden>
+    <button type="button" id="closeAlarmNotification" aria-label="关闭报警提示">×</button>
+    <span>新报警</span><strong id="alarmNotificationTitle">设备报警</strong>
+    <p id="alarmNotificationMessage"></p><small id="alarmNotificationTime"></small>
+</aside>
 <script src="curve-math.js"></script>
 <script src="app.js"></script>
 </body>

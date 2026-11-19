@@ -26,6 +26,8 @@ public class AlarmEvent {
     @TableField("occurred_at") private LocalDateTime occurredAt;
     /** 最近一次状态变更时间。 */
     @TableField("updated_at") private LocalDateTime updatedAt;
+    /** PLC自动报警未关闭期间的防重键；模拟报警为空，关闭时清空。 */
+    @TableField("deduplication_key") private String deduplicationKey;
 
     public Long getId() { return id; }
     public String getAlarmCode() { return alarmCode; }
@@ -42,4 +44,6 @@ public class AlarmEvent {
     public void setOccurredAt(LocalDateTime value) { occurredAt = value; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime value) { updatedAt = value; }
+    public String getDeduplicationKey() { return deduplicationKey; }
+    public void setDeduplicationKey(String value) { deduplicationKey = value; }
 }

@@ -29,6 +29,13 @@ const RECORD_PAGE_SIZE = 10;
 let recordPage = 1;
 let recordTotalPages = 1;
 let recordSearchTimer;
+const ALARM_PAGE_SIZE = 10;
+let alarmPage = 1;
+let alarmTotalPages = 1;
+let alarmGroup = "ACTIVE";
+let alarmEvents;
+let alarmAudioContext;
+const notifiedAlarmIds = new Set();
 let controlState;
 let configByPoint = new Map();
 let controlErrorMessage = "";
@@ -1046,24 +1053,38 @@ function renderRecords(rows) {
 }
 
 async function loadAlarms() {
-    const response = await fetch("/api/alarms");
-    if (!response.ok) throw new Error("读取报警失败");
-    const alarms = await response.json();
-    q("#totalAlarmCount").textContent = alarms.length;
-    q("#activeAlarmCount").textContent = alarms.filter(item => ["ACTIVE", "ACKNOWLEDGED"].includes(item.status)).length;
-    q("#alarmTableBody").innerHTML = alarms.map(alarm => {
+    const params = new URLSearchParams();
+    params.set("statusGroup", alarmGroup);
+    params.set("keyword", q("#alarmKeyword").value.trim());
+    params.set("alarmLevel", q("#alarmLevel").value);
+    params.set("page", String(alarmPage));
+    params.set("size", String(ALARM_PAGE_SIZE));
+    if (q("#alarmStartTime").value) params.set("startTime", q("#alarmStartTime").value);
+    if (q("#alarmEndTime").value) params.set("endTime", q("#alarmEndTime").value);
+    const response = await fetch(`/api/alarms?${params}`);
+    if (!response.ok) throw new Error(await responseError(response, "读取报警失败"));
+    const result = await response.json();
+    alarmPage = result.page;
+    alarmTotalPages = result.totalPages;
+    updateAlarmCounts(result.activeCount, result.processingCount, result.closedCount);
+    q("#alarmResultCount").textContent = `${result.total} 条`;
+    q("#alarmPageInfo").textContent = `第 ${result.page} / ${result.totalPages} 页`;
+    q("#alarmPreviousPage").disabled = result.page <= 1;
+    q("#alarmNextPage").disabled = result.page >= result.totalPages;
+    q("#alarmTableBody").innerHTML = result.events.map(alarm => {
         const action = { ACTIVE: "acknowledge", ACKNOWLEDGED: "recover", RECOVERED: "close" }[alarm.status];
         const label = { acknowledge: "确认", recover: "标记恢复", close: "关闭" }[action];
         return `<tr><td><span class="alarm-level ${alarm.alarmLevel === "CRITICAL" ? "high" : "medium"}">${escapeHtml(alarm.alarmLevel)}</span></td>
             <td>${escapeHtml(new Date(alarm.occurredAt).toLocaleString("zh-CN", { hour12: false }))}</td>
-            <td>${escapeHtml(alarm.sourceName)}</td><td>${escapeHtml(alarm.message)}</td>
+            <td>${escapeHtml(alarm.alarmCode)}</td><td>${escapeHtml(alarm.sourceName)}</td><td>${escapeHtml(alarm.message)}</td>
             <td>${escapeHtml(alarm.status)}</td><td>${action ? `<button data-alarm-id="${alarm.id}" data-alarm-action="${action}">${label}</button>` : "已结束"}</td></tr>`;
-    }).join("") || '<tr><td colspan="6">暂无报警</td></tr>';
+    }).join("") || '<tr><td colspan="7">当前条件下暂无报警</td></tr>';
     const canHandle = document.body.dataset.role === "ADMIN";
     qa("[data-alarm-action]").forEach(button => {
         button.disabled = !canHandle;
         button.title = canHandle ? "" : "仅管理员可处理报警";
-        button.addEventListener("click", () => handleAlarm(button.dataset.alarmId, button.dataset.alarmAction));
+        button.addEventListener("click", () => handleAlarm(button.dataset.alarmId, button.dataset.alarmAction)
+                .catch(showAlarmError));
     });
 }
 
@@ -1073,8 +1094,66 @@ async function handleAlarm(id, action) {
         headers: { "Content-Type": "application/json", [sessionContext.csrfHeaderName]: sessionContext.csrfToken },
         body: JSON.stringify({ remark: "Web 界面处理" })
     });
-    if (!response.ok) throw new Error("报警状态更新失败");
+    if (!response.ok) throw new Error(await responseError(response, "报警状态更新失败"));
     await loadAlarms();
+}
+
+function updateAlarmCounts(activeCount, processingCount, closedCount) {
+    q("#activeAlarmCount").textContent = activeCount;
+    q("#processingAlarmCount").textContent = processingCount;
+    q("#closedAlarmCount").textContent = closedCount;
+    q("#alarmNavCount").textContent = activeCount;
+    q("#alarmNavButton").classList.toggle("has-active-alarm", activeCount > 0);
+}
+
+function connectAlarmEvents() {
+    alarmEvents?.close();
+    alarmEvents = new EventSource("/api/alarms/events");
+    alarmEvents.addEventListener("alarm", event => {
+        const alarm = JSON.parse(event.data);
+        if (notifiedAlarmIds.has(alarm.id)) return;
+        notifiedAlarmIds.add(alarm.id);
+        q("#alarmNavCount").textContent = alarm.activeCount;
+        q("#alarmNavButton").classList.toggle("has-active-alarm", alarm.activeCount > 0);
+        q("#activeAlarmCount").textContent = alarm.activeCount;
+        showAlarmNotification(alarm);
+        playAlarmSound();
+    });
+}
+
+function showAlarmNotification(alarm) {
+    q("#alarmNotificationTitle").textContent = `${alarm.sourceName} · ${alarm.alarmCode}`;
+    q("#alarmNotificationMessage").textContent = alarm.message;
+    q("#alarmNotificationTime").textContent = new Date(alarm.occurredAt)
+            .toLocaleString("zh-CN", { hour12: false });
+    q("#alarmNotification").hidden = false;
+}
+
+function playAlarmSound() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    alarmAudioContext ||= new AudioContextClass();
+    const sound = () => {
+        const oscillator = alarmAudioContext.createOscillator();
+        const gain = alarmAudioContext.createGain();
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(740, alarmAudioContext.currentTime);
+        oscillator.frequency.setValueAtTime(520, alarmAudioContext.currentTime + 0.22);
+        gain.gain.setValueAtTime(0.08, alarmAudioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, alarmAudioContext.currentTime + 0.48);
+        oscillator.connect(gain).connect(alarmAudioContext.destination);
+        oscillator.start();
+        oscillator.stop(alarmAudioContext.currentTime + 0.5);
+    };
+    if (alarmAudioContext.state === "running") sound();
+    else alarmAudioContext.resume().then(sound).catch(() => {});
+}
+
+function armAlarmSound() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    alarmAudioContext ||= new AudioContextClass();
+    alarmAudioContext.resume().catch(() => {});
 }
 
 function setupNavigation() {
@@ -1093,6 +1172,19 @@ function setupNavigation() {
     const requestedView = new URLSearchParams(location.search).get("view");
     const requestedButton = requestedView && q(`.module-nav button[data-view="${requestedView}"]`);
     requestedButton?.click();
+}
+
+function selectAlarmGroup(group) {
+    alarmGroup = group;
+    alarmPage = 1;
+    const titles = { ACTIVE: "活动报警", PROCESSING: "处理中报警", CLOSED: "已关闭报警" };
+    q("#alarmTableTitle").textContent = titles[group];
+    qa("[data-alarm-group]").forEach(button => {
+        const active = button.dataset.alarmGroup === group;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", String(active));
+    });
+    return loadAlarms();
 }
 
 function setupAuthenticatedActions() {
@@ -1157,7 +1249,27 @@ function setupAuthenticatedActions() {
         clearTimeout(recordSearchTimer);
         recordSearchTimer = setTimeout(() => loadRecords(1).catch(showRecordError), 250);
     });
-    q("#refreshAlarmsButton").addEventListener("click", () => loadAlarms().catch(() => {}));
+    q("#refreshAlarmsButton").addEventListener("click", () => loadAlarms().catch(showAlarmError));
+    qa("[data-alarm-group]").forEach(button => button.addEventListener("click", () =>
+        selectAlarmGroup(button.dataset.alarmGroup).catch(showAlarmError)));
+    q("#queryAlarmsButton").addEventListener("click", () => {
+        alarmPage = 1;
+        loadAlarms().catch(showAlarmError);
+    });
+    q("#resetAlarmFiltersButton").addEventListener("click", () => {
+        for (const id of ["alarmKeyword", "alarmLevel", "alarmStartTime", "alarmEndTime"]) q(`#${id}`).value = "";
+        alarmPage = 1;
+        loadAlarms().catch(showAlarmError);
+    });
+    q("#alarmPreviousPage").addEventListener("click", () => {
+        alarmPage = Math.max(1, alarmPage - 1);
+        loadAlarms().catch(showAlarmError);
+    });
+    q("#alarmNextPage").addEventListener("click", () => {
+        alarmPage = Math.min(alarmTotalPages, alarmPage + 1);
+        loadAlarms().catch(showAlarmError);
+    });
+    q("#closeAlarmNotification").addEventListener("click", () => q("#alarmNotification").hidden = true);
     qa(".save-fit").forEach(button => {
         button.disabled = document.body.dataset.role !== "ADMIN";
         button.addEventListener("click", () => saveManualFit(button));
@@ -1177,6 +1289,10 @@ function showRecordError(error) {
     q("#recordCount").textContent = error.message;
 }
 
+function showAlarmError(error) {
+    q("#alarmResultCount").textContent = error.message;
+}
+
 function startClock() {
     const render = () => q("#clock").textContent = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date());
     render();
@@ -1184,6 +1300,8 @@ function startClock() {
 }
 
 async function init() {
+    window.addEventListener("pointerdown", armAlarmSound, { once: true });
+    window.addEventListener("keydown", armAlarmSound, { once: true });
     renderChannelSelectors();
     renderSettingsTabs();
     renderSettingsForm();
@@ -1204,6 +1322,7 @@ async function init() {
     setupNavigation();
     setupAuthenticatedActions();
     await Promise.all([loadRecords(), loadAlarms()]);
+    connectAlarmEvents();
     setInterval(() => loadControlState().catch(() => {}), 1000);
     startClock();
 }

@@ -100,9 +100,9 @@ public class ControlCommandService {
                                                                  String username) {
         Long configId = request.configId() == null ? DEFAULT_CONFIG_ID : request.configId();
         switch (request.commandType()) {
-            case MANUAL_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.MANUAL, configId);
+            case MANUAL_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.MANUAL);
             case MANUAL_DISCONNECT -> disconnectMode(requirePointCode(request), ControlDto.ControlMode.MANUAL);
-            case AUTO_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.AUTO, configId);
+            case AUTO_CONNECT -> connectMode(requirePointCode(request), ControlDto.ControlMode.AUTO);
             case AUTO_DISCONNECT -> disconnectMode(requirePointCode(request), ControlDto.ControlMode.AUTO);
             case ZERO_DISPLACEMENT -> {
                 String pointCode = requirePointCode(request);
@@ -160,7 +160,7 @@ public class ControlCommandService {
         }
     }
 
-    private void connectMode(String pointCode, ControlDto.ControlMode mode, Long configId) {
+    private void connectMode(String pointCode, ControlDto.ControlMode mode) {
         ControlDto.ChannelState channel = stateService.channel(pointCode);
         if (channel.mode() != mode && channel.action() == ControlDto.ChannelAction.IDLE
                 && channel.runId() != null) {
@@ -168,37 +168,8 @@ public class ControlCommandService {
             taskService.forceStop(channel.runId(), null);
         }
         stateService.assertConnectModeAllowed(pointCode, mode);
-        DeviceCommandGateway.PointConfiguration configuration = plcProperties.isPlcMode()
-                ? plcConfiguration(configId, pointCode) : null;
-        deviceGateway.connectMode(pointCode, mode, configuration);
+        deviceGateway.connectMode(pointCode, mode);
         stateService.connectMode(pointCode, mode);
-    }
-
-    /** 读取当前通道数据库参数，并转换为 PLC 接通模式时的批量写入对象。 */
-    private DeviceCommandGateway.PointConfiguration plcConfiguration(Long configId, String pointCode) {
-        MeasurementPoint point = requirePoint(pointCode);
-        TestConfigPoint config = requireConfigPoint(configId, point.getId());
-        if (config.getStandardForce() == null || config.getStandardForce().signum() <= 0
-                || config.getJackingCoefficient() == null || config.getJackingCoefficient().signum() <= 0
-                || config.getMaxDisplacement() == null || config.getMaxDisplacement().signum() <= 0
-                || config.getMotorRpm() == null || config.getMotorRpm() <= 0
-                || config.getForceIntervalKn() == null || config.getForceIntervalKn().signum() <= 0
-                || config.getHoldSeconds() == null || config.getHoldSeconds() <= 0) {
-            throw conflict("当前通道参数未完整配置，不能接通模式");
-        }
-        int forceInterval;
-        try {
-            forceInterval = config.getForceIntervalKn().intValueExact();
-        } catch (ArithmeticException exception) {
-            throw conflict("力值间隔必须是 1～32767 kN 的整数");
-        }
-        if (forceInterval > Short.MAX_VALUE) {
-            throw conflict("力值间隔必须是 1～32767 kN 的整数");
-        }
-        return new DeviceCommandGateway.PointConfiguration(
-                config.getStandardForce(), config.getJackingCoefficient(), config.getMaxDisplacement(),
-                BigDecimal.valueOf(config.getMotorRpm()), forceInterval,
-                BigDecimal.valueOf(config.getHoldSeconds()));
     }
 
     private void disconnectMode(String pointCode, ControlDto.ControlMode mode) {
@@ -238,6 +209,10 @@ public class ControlCommandService {
         stateService.assertActionAllowed(pointCode, action, consumesZero);
         try {
             if (plcProperties.isPlcMode()) {
+                if (action == ControlDto.ChannelAction.ASCENDING) {
+                    // 每次上升都重新写入数据库已保存目标，避免 PLC 沿用上一次动作参数。
+                    deviceGateway.writeManualTarget(pointCode, target);
+                }
                 sendManualPlcAction(pointCode, action);
             } else {
                 // 手动操作只下发设备动作并监视实时位移，不创建测量任务、运行或采样记录。
@@ -310,7 +285,8 @@ public class ControlCommandService {
         String pointCode = requirePointCode(request);
         MeasurementPoint point = requirePoint(pointCode);
         TestConfigPoint config = requireConfigPoint(configId, point.getId());
-        validateAutomaticLimits(config);
+        DeviceCommandGateway.AutomaticConfiguration automaticConfiguration =
+                automaticConfiguration(config);
         if (alarmEventMapper.countOpenAlarms() > 0) {
             emergencyStop("ACTIVE_ALARM");
             throw conflict("存在未关闭报警，不能启动自动测试");
@@ -318,6 +294,10 @@ public class ControlCommandService {
         stateService.assertActionAllowed(pointCode, ControlDto.ChannelAction.AUTO_TEST, true);
         TaskDto.TaskResponse task = null;
         try {
+            if (plcProperties.isPlcMode()) {
+                // 参数回读全部一致后才创建运行并发送自动测量脉冲。
+                deviceGateway.writeAutomaticConfiguration(pointCode, automaticConfiguration);
+            }
             task = taskService.createAutomaticControlTask(configId, pointCode,
                     point.getPointName() + "自动测试", username);
             TaskDto.TaskResponse running = taskService.command(task.runId(),
@@ -421,17 +401,27 @@ public class ControlCommandService {
         return target.setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
-    private void validateAutomaticLimits(TestConfigPoint config) {
-        validateMotionLimits(config);
-        if (config.getForceIntervalKn() == null || config.getForceIntervalKn().signum() <= 0) {
-            throw conflict("请先到设置页配置力值间隔");
+    private DeviceCommandGateway.AutomaticConfiguration automaticConfiguration(TestConfigPoint config) {
+        if (config.getStandardForce() == null || config.getStandardForce().signum() <= 0
+                || config.getJackingCoefficient() == null || config.getJackingCoefficient().signum() <= 0
+                || config.getMaxDisplacement() == null || config.getMaxDisplacement().signum() <= 0
+                || config.getMotorRpm() == null || config.getMotorRpm() <= 0
+                || config.getForceIntervalKn() == null || config.getForceIntervalKn().signum() <= 0
+                || config.getHoldSeconds() == null || config.getHoldSeconds() <= 0) {
+            throw conflict("当前通道自动测量参数未完整配置");
         }
-    }
-
-    private void validateMotionLimits(TestConfigPoint config) {
-        if (config.getMaxDisplacement() == null || config.getMaxDisplacement().signum() <= 0) {
-            throw conflict("请先到设置页配置自动目标位移");
+        int forceInterval;
+        try {
+            forceInterval = config.getForceIntervalKn().intValueExact();
+        } catch (ArithmeticException exception) {
+            throw conflict("力值间隔必须是 1～32767 kN 的整数");
         }
+        if (forceInterval > Short.MAX_VALUE) {
+            throw conflict("力值间隔必须是 1～32767 kN 的整数");
+        }
+        return new DeviceCommandGateway.AutomaticConfiguration(config.getMaxDisplacement(),
+                BigDecimal.valueOf(config.getMotorRpm()), forceInterval,
+                BigDecimal.valueOf(config.getHoldSeconds()));
     }
 
     private TestConfigPoint requireConfigPoint(Long configId, Long pointId) {

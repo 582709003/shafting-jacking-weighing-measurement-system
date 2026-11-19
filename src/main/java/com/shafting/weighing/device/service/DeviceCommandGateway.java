@@ -10,8 +10,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 工作页、设置页与现场 S7-1200 之间的设备命令边界。
@@ -27,7 +25,6 @@ public class DeviceCommandGateway {
 
     private final PlcProperties properties;
     private final S7PlcClient plcClient;
-    private final Set<String> unsynchronizedManualTargets = ConcurrentHashMap.newKeySet();
 
     public DeviceCommandGateway(PlcProperties properties, S7PlcClient plcClient) {
         this.properties = properties;
@@ -35,23 +32,18 @@ public class DeviceCommandGateway {
     }
 
     /**
-     * 每次接通模式都重新选择页面当前通道、同步数据库参数并确认模式。
+     * 每次接通模式都重新选择页面当前通道并确认模式。
      *
-     * <p>设置页只保存数据库，因此这里必须在模式脉冲前完成参数写入和回读；任一步失败都不得继续接通。</p>
+     * <p>业务参数在上升或自动测量动作触发前写入，接通模式不写参数。</p>
      */
-    public void connectMode(String pointCode, ControlDto.ControlMode mode, PointConfiguration configuration) {
+    public void connectMode(String pointCode, ControlDto.ControlMode mode) {
         if (!properties.isPlcMode()) {
             return;
-        }
-        if (mode == ControlDto.ControlMode.MANUAL && unsynchronizedManualTargets.contains(pointCode)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "手动目标位移与 PLC 未同步，请重新保存当前通道手动目标位移");
         }
         PlcPointCatalog.ChannelTags channel = PlcPointCatalog.channel(pointCode);
         plcClient.pulse(channel.selection());
         plcClient.awaitInt(properties.getFeedbackSelectedChannel(), channel.channelValue(),
                 properties.getFeedbackTimeoutMs());
-        writePointConfiguration(pointCode, configuration);
         plcClient.pulse(PlcPointCatalog.control(modeControl(mode)));
         plcClient.awaitInt(properties.getFeedbackMode(), mode == ControlDto.ControlMode.MANUAL ? 1 : 2,
                 properties.getFeedbackTimeoutMs());
@@ -144,39 +136,29 @@ public class DeviceCommandGateway {
                 values.get("motorRpm").intValue(), Instant.now());
     }
 
-    /** 保存手动目标位移前先写入当前通道新增 REAL 点并回读一致。 */
+    /** 手动上升前写入当前通道目标位移 REAL 点并回读一致。 */
     public void writeManualTarget(String pointCode, BigDecimal targetDisplacementMm) {
         if (!properties.isPlcMode()) {
             return;
         }
         String address = requireConfiguredAddress(properties.getManualTarget(), pointCode, "手动目标位移");
-        try {
-            writeAndVerify(Map.of(address, targetDisplacementMm.floatValue()),
-                    Map.of(address, targetDisplacementMm));
-            unsynchronizedManualTargets.remove(pointCode);
-        } catch (RuntimeException exception) {
-            unsynchronizedManualTargets.add(pointCode);
-            throw exception;
-        }
+        writeAndVerify(Map.of(address, targetDisplacementMm.floatValue()),
+                Map.of(address, targetDisplacementMm));
     }
 
-    /** 接通模式前批量下发数据库中的当前通道参数并逐项回读；总值只保存数据库。 */
-    public void writePointConfiguration(String pointCode, PointConfiguration values) {
+    /** 自动测量前下发 PLC 控制需要的四项参数并逐项回读。 */
+    public void writeAutomaticConfiguration(String pointCode, AutomaticConfiguration values) {
         if (!properties.isPlcMode()) {
             return;
         }
         PlcPointCatalog.ChannelTags tags = PlcPointCatalog.channel(pointCode);
         Map<String, Object> writes = new LinkedHashMap<>();
-        writes.put(tags.standardForce(), values.standardForce().floatValue());
-        writes.put(tags.jackingCoefficient(), values.jackingCoefficient().floatValue());
         writes.put(tags.maxDisplacement(), values.maxDisplacement().floatValue());
         writes.put(tags.configuredMotorRpm(), values.motorRpm().floatValue());
         writes.put(tags.forceInterval(), values.forceIntervalKn());
         writes.put(tags.holdSeconds(), values.holdSeconds().floatValue());
 
         Map<String, BigDecimal> expected = new LinkedHashMap<>();
-        expected.put(tags.standardForce(), values.standardForce());
-        expected.put(tags.jackingCoefficient(), values.jackingCoefficient());
         expected.put(tags.maxDisplacement(), values.maxDisplacement());
         expected.put(tags.configuredMotorRpm(), values.motorRpm());
         expected.put(tags.forceInterval(), BigDecimal.valueOf(values.forceIntervalKn()));
@@ -190,13 +172,6 @@ public class DeviceCommandGateway {
             return Map.of();
         }
         return plcClient.readValues(addresses);
-    }
-
-    /** 手动目标已写入 PLC 但数据库事务回滚时锁定手动模式，要求操作员重新保存。 */
-    public void markManualTargetUnsynchronized(String pointCode) {
-        if (properties.isPlcMode()) {
-            unsynchronizedManualTargets.add(pointCode);
-        }
     }
 
     private void writeAndVerify(Map<String, Object> writes, Map<String, BigDecimal> expectedValues) {
@@ -247,10 +222,8 @@ public class DeviceCommandGateway {
         return address;
     }
 
-    /** 接通手动或自动模式时需要写入 PLC 的当前通道参数，不含仅存数据库的总值。 */
-    public record PointConfiguration(
-            /** 标准值，单位 kN。 */ BigDecimal standardForce,
-            /** 顶升计算系数。 */ BigDecimal jackingCoefficient,
+    /** 自动测量启动前写入 PLC 的控制参数。 */
+    public record AutomaticConfiguration(
             /** 自动目标位移，单位 mm。 */ BigDecimal maxDisplacement,
             /** 顶升速度，单位 r/min。 */ BigDecimal motorRpm,
             /** 力值间隔，单位 kN，范围 1～32767。 */ int forceIntervalKn,

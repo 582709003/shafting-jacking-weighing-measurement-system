@@ -105,6 +105,23 @@ assert.ok(js.includes('params.set("page", String(page))')
         && js.includes('params.set("size", String(RECORD_PAGE_SIZE))')
         && js.includes('params.set("keyword", keyword)'),
         "测量记录页应将页码、每页数量和搜索条件提交给后端分页接口");
+for (const alarmTab of ["ACTIVE", "PROCESSING", "CLOSED"]) {
+    assert.ok(html.includes(`data-alarm-group="${alarmTab}"`), `报警页缺少状态页签：${alarmTab}`);
+}
+for (const alarmFilter of ["alarmKeyword", "alarmLevel", "alarmStartTime", "alarmEndTime"]) {
+    assert.ok(html.includes(`id="${alarmFilter}"`), `报警页缺少筛选条件：${alarmFilter}`);
+}
+assert.ok(html.includes('id="alarmPreviousPage"') && html.includes('id="alarmNextPage"')
+        && html.includes('id="alarmPageInfo"'), "报警页应提供服务端分页控件");
+assert.ok(html.includes('id="alarmNotification"') && html.includes('aria-live="assertive"'),
+        "新报警应使用高优先级红色实时提示");
+assert.ok(js.includes('new EventSource("/api/alarms/events")')
+        && js.includes('addEventListener("alarm"') && js.includes("playAlarmSound"),
+        "页面应通过 SSE 接收新报警并播放一次声音");
+assert.ok(js.includes('params.set("statusGroup", alarmGroup)')
+        && js.includes('params.set("alarmLevel"') && js.includes('params.set("startTime"')
+        && js.includes('params.set("endTime"'), "报警查询应提交状态、级别和发生时间范围");
+assert.ok(!js.includes('setInterval(() => loadAlarms'), "报警列表不得定时自动刷新");
 assert.ok(js.includes('const yValue = pixel =>')
         && js.includes('index === 0 ? state[kind][index][1] : yValue(pixelY)'),
         "拟合线上端点应支持上下左右拖动，下端点应继续锁定在横轴");

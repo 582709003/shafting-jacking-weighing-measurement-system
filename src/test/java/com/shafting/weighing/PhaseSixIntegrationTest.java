@@ -52,7 +52,7 @@ class PhaseSixIntegrationTest {
         controlStateService.resetControls();
         jdbcTemplate.update("UPDATE alarm_event SET status = 'CLOSED'");
         jdbcTemplate.update("UPDATE test_config_point SET max_displacement = 0.40, "
-                + "manual_target_displacement = 0.20, force_interval_kn = 0.5, hold_seconds = 1");
+                + "manual_target_displacement = 0.20, force_interval_kn = 1, hold_seconds = 1");
     }
 
     @Test

@@ -1,10 +1,11 @@
 package com.shafting.weighing.alarm.controller;
 
 import com.shafting.weighing.alarm.dto.AlarmDto;
-import com.shafting.weighing.alarm.entity.AlarmEvent;
 import com.shafting.weighing.alarm.service.AlarmService;
 
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,13 +13,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
+/** 报警查询和处理接口，对应前端“报警界面”。 */
 @RestController
 @RequestMapping("/api")
-/** 报警查询和处理接口，对应前端“报警界面”。 */
 public class AlarmController {
 
     private final AlarmService alarmService;
@@ -28,12 +31,39 @@ public class AlarmController {
     }
 
     /**
-     * 读取报警页面列表，按发生时间倒序返回。
+     * 分页读取报警页面当前页签，支持关键词、级别和发生时间范围筛选。
      *
-     * @return 全部模拟报警事件
+     * @param statusGroup ACTIVE活动报警、PROCESSING处理中报警、CLOSED已关闭报警
+     * @param keyword 报警编码、来源或内容关键词，允许为空
+     * @param alarmLevel 报警级别，允许为空
+     * @param startTime 发生时间下限，允许为空
+     * @param endTime 发生时间上限，允许为空
+     * @param page 页码，从1开始
+     * @param size 每页数量，允许1～100
+     * @return 当前页报警、分页信息和三个页签数量
      */
     @GetMapping("/alarms")
-    public List<AlarmEvent> alarms() { return alarmService.list(); }
+    public AlarmDto.PageResponse alarms(@RequestParam(defaultValue = "ACTIVE") String statusGroup,
+                                        @RequestParam(defaultValue = "") String keyword,
+                                        @RequestParam(defaultValue = "") String alarmLevel,
+                                        @RequestParam(required = false)
+                                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+                                        @RequestParam(required = false)
+                                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+                                        @RequestParam(defaultValue = "1") int page,
+                                        @RequestParam(defaultValue = "10") int size) {
+        return alarmService.page(statusGroup, keyword, alarmLevel, startTime, endTime, page, size);
+    }
+
+    /**
+     * 建立新报警实时通知连接；只推送连接建立后的新事件，不重放历史报警。
+     *
+     * @return 报警服务器事件发射器，所有登录角色均可订阅
+     */
+    @GetMapping(value = "/alarms/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter events() {
+        return alarmService.subscribe();
+    }
 
     /**
      * 读取单个报警及其完整处理历史。
