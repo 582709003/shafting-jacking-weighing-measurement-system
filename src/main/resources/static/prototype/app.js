@@ -15,6 +15,17 @@ let curveMaximumDisplacement = 0;
 
 const q = (selector, root = document) => root.querySelector(selector);
 const qa = (selector, root = document) => [...root.querySelectorAll(selector)];
+const rawFetch = window.fetch.bind(window);
+
+async function apiFetch(...args) {
+    const response = await rawFetch(...args);
+    if (response.status === 401) {
+        location.replace("/login?expired");
+        throw new Error("登录已过期");
+    }
+    return response;
+}
+
 let sessionContext;
 let currentConfigVersion = 1;
 let activePointCode = pointCodes[0];
@@ -100,11 +111,7 @@ function renderSettingsForm() {
 }
 
 async function loadSession() {
-    const response = await fetch("/api/session");
-    if (response.status === 401) {
-        location.href = "/login";
-        throw new Error("未登录");
-    }
+    const response = await apiFetch("/api/session");
     if (!response.ok) throw new Error("读取登录信息失败");
     sessionContext = await response.json();
     const role = sessionContext.roles.includes("ADMIN") ? "ADMIN" : sessionContext.roles[0];
@@ -115,7 +122,7 @@ async function loadSession() {
 }
 
 async function loadSettingsConfig() {
-    const response = await fetch("/api/configs/1");
+    const response = await apiFetch("/api/configs/1");
     if (!response.ok) throw new Error("读取参数失败");
     const config = await response.json();
     currentConfigVersion = config.configVersion;
@@ -165,7 +172,7 @@ async function saveSettingsConfig() {
     saveButton.disabled = true;
     showSettingsNotice("info", `正在保存${channel}参数……`);
     try {
-        const response = await fetch(`/api/configs/1/points/${activeSettingsPointCode}`, {
+        const response = await apiFetch(`/api/configs/1/points/${activeSettingsPointCode}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -194,7 +201,7 @@ async function saveSettingsConfig() {
 async function saveManualTarget() {
     const targetDisplacementMm = Number(q("#targetDisplacementInput").value);
     if (targetDisplacementMm <= 0) throw new Error("手动目标位移必须大于 0 mm");
-    const response = await fetch(`/api/configs/1/points/${activePointCode}/manual-target`, {
+    const response = await apiFetch(`/api/configs/1/points/${activePointCode}/manual-target`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",
@@ -216,7 +223,7 @@ async function sendControlCommand(commandType, options = {}) {
     renderControlState();
     const commandNo = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
     try {
-        const response = await fetch("/api/control/commands", {
+        const response = await apiFetch("/api/control/commands", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -244,7 +251,7 @@ async function sendControlCommand(commandType, options = {}) {
 }
 
 async function loadControlState() {
-    const response = await fetch("/api/control/state");
+    const response = await apiFetch("/api/control/state");
     if (!response.ok) throw new Error("读取控制状态失败");
     controlState = await response.json();
     syncCurrentRun();
@@ -477,7 +484,7 @@ function renderValueChannelSelector() {
 }
 
 async function loadCompletedValueTasks(button) {
-    const response = await fetch(`/api/records/completed?pointCode=${encodeURIComponent(activeResultPointCode)}`);
+    const response = await apiFetch(`/api/records/completed?pointCode=${encodeURIComponent(activeResultPointCode)}`);
     if (!response.ok) throw new Error(await responseError(response, "读取已完成测量任务失败"));
     const tasks = await response.json();
     setTaskOptions("valueTaskSelect", tasks);
@@ -489,7 +496,7 @@ async function loadCompletedValueTasks(button) {
 
 async function loadValueResultByRun(runId) {
     q("#valueResultNotice").textContent = "正在读取所选任务的计算结果。";
-    const response = await fetch(`/api/runs/${runId}/result`);
+    const response = await apiFetch(`/api/runs/${runId}/result`);
     if (!response.ok) throw new Error(await responseError(response, "所选任务尚未生成计算结果"));
     currentValueResult = await response.json();
     renderValueResult(currentValueResult);
@@ -535,7 +542,7 @@ function showValueResultError(error) {
 
 async function saveCurrentValueResult() {
     if (!currentValueResult) throw new Error("当前通道没有可保存结果");
-    const response = await fetch(`/api/runs/${currentValueResult.runId}/result/save`, {
+    const response = await apiFetch(`/api/runs/${currentValueResult.runId}/result/save`, {
         method: "POST",
         headers: { [sessionContext.csrfHeaderName]: sessionContext.csrfToken }
     });
@@ -547,7 +554,7 @@ async function saveCurrentValueResult() {
 async function deleteCurrentValueResult() {
     if (!currentValueResult) throw new Error("当前通道没有可删除结果");
     if (!window.confirm(`确认删除${currentValueResult.pointName}本次结果和原始采样？该操作会写入审计日志。`)) return;
-    const response = await fetch(`/api/runs/${currentValueResult.runId}/result`, {
+    const response = await apiFetch(`/api/runs/${currentValueResult.runId}/result`, {
         method: "DELETE",
         headers: { [sessionContext.csrfHeaderName]: sessionContext.csrfToken }
     });
@@ -563,7 +570,7 @@ async function saveAdjustmentCoefficient() {
     if (!currentValueResult) throw new Error("当前通道没有可修改的测量结果");
     const coefficient = Number(q("#adjustmentCoefficientResult").value);
     if (!Number.isFinite(coefficient) || coefficient <= 0) throw new Error("调整系数必须大于 0");
-    const response = await fetch(
+    const response = await apiFetch(
             `/api/runs/${currentValueResult.runId}/result/adjustment-coefficient`, {
                 method: "PATCH",
                 headers: {
@@ -704,7 +711,7 @@ function exportCurveCsv() {
 }
 
 async function loadCompletedCurveTasks(pointCode, page, button) {
-    const response = await fetch(`/api/records/completed?pointCode=${encodeURIComponent(pointCode)}`);
+    const response = await apiFetch(`/api/records/completed?pointCode=${encodeURIComponent(pointCode)}`);
     if (!response.ok) throw new Error(await responseError(response, "读取已完成测量任务失败"));
     const tasks = await response.json();
     const select = q(`#${page.selectId}`);
@@ -730,7 +737,7 @@ async function loadCurveTask(task, page) {
 }
 
 async function loadSavedCurveFit(runId, chartId) {
-    const response = await fetch(`/api/runs/${runId}/curve-fit`);
+    const response = await apiFetch(`/api/runs/${runId}/curve-fit`);
     if (response.status === 404) return;
     if (!response.ok) throw new Error(await responseError(response, "读取已保存拟合结果失败"));
     q(`#${chartId}`).setFitState?.(await response.json());
@@ -757,7 +764,7 @@ function clearCurvePage(page, message) {
 }
 
 async function loadRunSamples(runId, page) {
-    const response = await fetch(`/api/runs/${runId}/samples`);
+    const response = await apiFetch(`/api/runs/${runId}/samples`);
     if (!response.ok) throw new Error(await responseError(response, "读取采样数据失败"));
     const raw = await response.json();
     const lifting = raw.filter(item => item.stage === "LIFTING");
@@ -936,7 +943,7 @@ function createCurveChart(container) {
 
 async function autoFitCurrentRun() {
     if (!currentRun) throw new Error("请先选择已完成的测量任务");
-    const response = await fetch(`/api/runs/${currentRun.runId}/curve-fit/auto`, {
+    const response = await apiFetch(`/api/runs/${currentRun.runId}/curve-fit/auto`, {
         method: "POST",
         headers: { [sessionContext.csrfHeaderName]: sessionContext.csrfToken }
     });
@@ -961,7 +968,7 @@ async function saveManualFit(button) {
         if (document.body.dataset.role !== "ADMIN") throw new Error("仅管理员可保存人工修订");
         const run = currentCurveRun || currentRun;
         if (!run) throw new Error("请先选择测量任务");
-        const response = await fetch(`/api/runs/${run.runId}/curve-fit/manual`, {
+        const response = await apiFetch(`/api/runs/${run.runId}/curve-fit/manual`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1019,7 +1026,7 @@ async function loadRecords(page = 1) {
     params.set("page", String(page));
     params.set("size", String(RECORD_PAGE_SIZE));
     params.set("keyword", keyword);
-    const response = await fetch(`/api/records?${params}`);
+    const response = await apiFetch(`/api/records?${params}`);
     if (!response.ok) throw new Error("读取测量记录失败");
     const result = await response.json();
     recordRows = result.records;
@@ -1073,7 +1080,7 @@ async function loadAlarms() {
     params.set("size", String(ALARM_PAGE_SIZE));
     if (q("#alarmStartTime").value) params.set("startTime", q("#alarmStartTime").value);
     if (q("#alarmEndTime").value) params.set("endTime", q("#alarmEndTime").value);
-    const response = await fetch(`/api/alarms?${params}`);
+    const response = await apiFetch(`/api/alarms?${params}`);
     if (!response.ok) throw new Error(await responseError(response, "读取报警失败"));
     const result = await response.json();
     alarmPage = result.page;
@@ -1101,7 +1108,7 @@ async function loadAlarms() {
 }
 
 async function handleAlarm(id, action) {
-    const response = await fetch(`/api/alarms/${id}/${action}`, {
+    const response = await apiFetch(`/api/alarms/${id}/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", [sessionContext.csrfHeaderName]: sessionContext.csrfToken },
         body: JSON.stringify({ remark: "Web 界面处理" })
@@ -1176,7 +1183,7 @@ function showUserNotice(type, message) {
 
 async function loadUsers() {
     const [usersResponse, rolesResponse] = await Promise.all([
-        fetch("/api/users"), fetch("/api/users/roles")
+        apiFetch("/api/users"), apiFetch("/api/users/roles")
     ]);
     if (!usersResponse.ok) throw new Error(await responseError(usersResponse, "读取用户失败"));
     if (!rolesResponse.ok) throw new Error(await responseError(rolesResponse, "读取角色失败"));
@@ -1227,7 +1234,7 @@ function passwordsMatch(newPassword, confirmPassword, messageId) {
 }
 
 async function requestUserUpdate(url, method, body) {
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
         method,
         headers: {
             "Content-Type": "application/json",
@@ -1376,7 +1383,7 @@ function setupAuthenticatedActions() {
         q("#changePasswordDialog").showModal();
     });
     q("#logoutButton").addEventListener("click", async () => {
-        await fetch("/logout", {
+        await apiFetch("/logout", {
             method: "POST",
             headers: { [sessionContext.csrfHeaderName]: sessionContext.csrfToken }
         });

@@ -6,12 +6,14 @@ import path from "node:path";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const prototypeDir = path.resolve(testDir, "../../main/resources/static/prototype");
+const templateDir = path.resolve(testDir, "../../main/resources/templates");
 const require = createRequire(import.meta.url);
 const curveMath = require(path.join(prototypeDir, "curve-math.js"));
-const [html, css, js] = await Promise.all([
+const [html, css, js, loginHtml] = await Promise.all([
     readFile(path.join(prototypeDir, "index.html"), "utf8"),
     readFile(path.join(prototypeDir, "styles.css"), "utf8"),
-    readFile(path.join(prototypeDir, "app.js"), "utf8")
+    readFile(path.join(prototypeDir, "app.js"), "utf8"),
+    readFile(path.join(templateDir, "login.html"), "utf8")
 ]);
 
 for (const page of ["work", "settings", "values", "shaft-curves", "main-curves", "records", "alarms", "users"]) {
@@ -31,8 +33,8 @@ assert.ok(html.includes("仅管理员可调整"), "曲线页应明确只有管�
 assert.ok(html.includes("采样点平滑显示"), "曲线页应明确标识采样点之间采用平滑显示");
 assert.ok(html.includes('data-role="ADMIN"'), "原型应显式标识当前管理员角色");
 assert.ok(js.includes('dataset.role === "ADMIN"'), "曲线拖动必须经过管理员角色判断");
-assert.ok(js.includes('fetch("/api/session")'), "页面应从后端读取登录角色");
-assert.ok(js.includes('fetch("/api/configs/1")'), "设置页应从后端读取六点参数");
+assert.ok(js.includes('apiFetch("/api/session")'), "页面应从后端读取登录角色");
+assert.ok(js.includes('apiFetch("/api/configs/1")'), "设置页应从后端读取六点参数");
 assert.ok(html.includes('id="settingsChannelTabs"') && html.includes('id="settingsForm"'), "设置页应按通道提供 Tab 和单通道表单");
 assert.ok(!html.includes('id="settingsMatrix"') && !html.includes('id="settingsChannelSelector"'), "设置页不应继续显示六通道矩阵和重复选择器");
 assert.ok(js.includes('/api/configs/1/points/'), "设置页应只保存当前通道参数");
@@ -48,8 +50,8 @@ assert.ok(js.includes("settingsSaving") && js.includes("finally"),
 assert.ok(!html.includes("设备参数未提供") && !html.includes("pending-panel"),
         "设置页不应继续展示开发阶段待确认说明");
 assert.ok(js.includes('totalValue'), "设置页应记录每个通道的总值");
-assert.ok(js.includes('fetch("/api/control/state")'), "工作页应读取后端权威控制状态");
-assert.ok(js.includes('fetch("/api/control/commands"'), "工作页应通过统一接口发送控制命令");
+assert.ok(js.includes('apiFetch("/api/control/state")'), "工作页应读取后端权威控制状态");
+assert.ok(js.includes('apiFetch("/api/control/commands"'), "工作页应通过统一接口发送控制命令");
 assert.ok(js.includes("new EventSource"), "工作页应通过 SSE 接收实时状态");
 assert.ok(js.includes('/api/points/${selected.pointCode}/events'),
         "无运行记录的手动操作应按通道订阅实时传感器数据");
@@ -137,6 +139,10 @@ for (const endpoint of ['/api/users"', '/api/users/roles', '/roles`', '/password
 }
 assert.ok(js.includes('newPassword !== confirmPassword')
         && js.includes('location.href = "/login?passwordChanged"'), "密码表单应校验二次输入并在本人改密后重新登录");
+assert.ok(js.includes("async function apiFetch") && js.includes("response.status === 401")
+        && js.includes('location.replace("/login?expired")'), "任一 API 返回 401 时应统一退出并跳转登录页");
+assert.ok(loginHtml.includes('th:if="${param.expired}"') && loginHtml.includes("登录已过期"),
+        "登录页应明确提示会话已过期");
 assert.ok(js.includes('const yValue = pixel =>')
         && js.includes('index === 0 ? state[kind][index][1] : yValue(pixelY)'),
         "拟合线上端点应支持上下左右拖动，下端点应继续锁定在横轴");
