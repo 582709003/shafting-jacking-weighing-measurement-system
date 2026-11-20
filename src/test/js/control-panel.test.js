@@ -24,6 +24,10 @@ assert.match(script, /MANUAL_ENABLE/);
 assert.match(script, /\/manual-target/);
 assert.match(script, /const canEditManualTarget = sessionContext\.roles\.some\(role => \["ADMIN", "ENGINEER"\]\.includes\(role\)\)/);
 assert.match(script, /MANUAL_PAUSE/);
+assert.match(script, /manualAscendButton"\)\.disabled = !manualActionAllowed \|\| !channel\.zeroed/,
+        "当前通道未清零时，上升按钮必须灰显");
+assert.match(script, /manualAscendButton"\)\.title =[\s\S]*?请在手动模式下重新执行本通道位移清零/,
+        "上升按钮灰显时应提示先重新清零");
 assert.match(script, /\/api\/points\/\$\{selected\.pointCode\}\/events/);
 assert.match(script, /function syncCurrentRun\(\)[\s\S]*?`point:\$\{selected\.pointCode\}`[\s\S]*?subscribeRealtime/);
 assert.match(script, /controlCommandPending/);

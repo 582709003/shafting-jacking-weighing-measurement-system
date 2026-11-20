@@ -21,7 +21,7 @@ class ControlStateServiceTest {
     }
 
     @Test
-    void shouldRequireManualStartBeforeManualAction() {
+    void shouldRequireManualStartAndFreshZeroBeforeEveryAscent() {
         service.connectMode("TAIL_SHAFT", ControlDto.ControlMode.MANUAL);
         service.markZeroed("TAIL_SHAFT");
 
@@ -36,6 +36,15 @@ class ControlStateServiceTest {
         assertThat(channel.manualStarted()).isTrue();
         assertThat(channel.action()).isEqualTo(ControlDto.ChannelAction.ASCENDING);
         assertThat(channel.zeroed()).isFalse();
+
+        service.finishAction("TAIL_SHAFT", null);
+        assertThatThrownBy(() -> service.beginAction("TAIL_SHAFT", ControlDto.ChannelAction.ASCENDING,
+                new BigDecimal("0.20"), true)).isInstanceOf(ResponseStatusException.class);
+
+        service.markZeroed("TAIL_SHAFT");
+        service.beginAction("TAIL_SHAFT", ControlDto.ChannelAction.ASCENDING,
+                new BigDecimal("0.20"), true);
+        assertThat(service.channel("TAIL_SHAFT").zeroed()).isFalse();
     }
 
     @Test
