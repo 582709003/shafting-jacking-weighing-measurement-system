@@ -18,8 +18,8 @@ public record SimulationStart(
         Integer motorRpm,
         /** 参数方案中的标准力，单位 kN。 */
         BigDecimal standardForceKn,
-        /** 自动顶升累计力值间隔，单位 kN。 */
-        BigDecimal forceIntervalKn,
-        /** 每次达到累计力值间隔后的保持时间，单位秒。 */
+        /** 自动顶升压力间隔，单位 MPa。 */
+        BigDecimal pressureIntervalMpa,
+        /** 每次达到压力间隔后的保持时间，单位秒。 */
         Integer holdSeconds) {
 }

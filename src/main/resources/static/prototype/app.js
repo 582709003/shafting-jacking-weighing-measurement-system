@@ -1,13 +1,21 @@
 const channels = ["尾轴", "中轴1", "中轴2", "飞轮", "1#", "2#"];
 const pointCodes = ["TAIL_SHAFT", "INTERMEDIATE_1", "INTERMEDIATE_2", "FLYWHEEL", "MAIN_ENGINE_1", "MAIN_ENGINE_2"];
 const shaftChannels = ["尾轴", "中轴1", "中轴2", "飞轮"];
+const schematicPoints = [
+    { pointCode: "TAIL_SHAFT", label: "尾轴", position: "13%" },
+    { pointCode: "INTERMEDIATE_2", label: "中轴2", position: "30%" },
+    { pointCode: "INTERMEDIATE_1", label: "中轴1", position: "44%" },
+    { pointCode: "FLYWHEEL", label: "飞轮", position: "60%" },
+    { pointCode: "MAIN_ENGINE_1", label: "1#", position: "74%" },
+    { pointCode: "MAIN_ENGINE_2", label: "2#", position: "87%" }
+];
 const parameterRows = [
     ["标准值", "kN", "standardForce", "0.01"],
     ["总值", "kN", "totalValue", "0.01"],
     ["顶升系数", "", "jackingCoefficient", "0.0001"],
     ["自动目标位移", "mm", "maxDisplacement", "0.01"],
     ["顶升速度", "r/min", "motorRpm", "1"],
-    ["力值间隔", "kN", "forceIntervalKn", "1"],
+    ["压力间隔", "MPa", "pressureIntervalMpa", "1"],
     ["时间间隔", "s", "holdSeconds", "1"]
 ];
 let samples = [];
@@ -102,10 +110,10 @@ function renderSettingsForm() {
     const channelIndex = pointCodes.indexOf(activeSettingsPointCode);
     const point = configByPoint.get(activeSettingsPointCode) || {};
     const defaults = { standardForce: 0, totalValue: 0, jackingCoefficient: 1,
-        maxDisplacement: 0, motorRpm: 0, forceIntervalKn: 1, holdSeconds: 0 };
+        maxDisplacement: 0, motorRpm: 0, pressureIntervalMpa: 1, holdSeconds: 0 };
     form.innerHTML = `<div class="settings-form-head"><div><p>当前通道</p><h2>${channels[channelIndex]}</h2></div><span>单通道新增或更新</span></div>
         <div class="settings-field-grid">${parameterRows.map(([name, unit, field, step]) => `
-            <label class="settings-field"><span>${name}</span><div><input type="number" min="${field === "forceIntervalKn" ? 1 : step}" step="${step}" data-field="${field}" aria-label="${channels[channelIndex]}${name}" value="${point[field] ?? defaults[field]}" required><small>${unit}</small></div></label>`).join("")}</div>`;
+            <label class="settings-field"><span>${name}</span><div><input type="number" min="${field === "pressureIntervalMpa" ? 1 : step}" step="${step}" data-field="${field}" aria-label="${channels[channelIndex]}${name}" value="${point[field] ?? defaults[field]}" required><small>${unit}</small></div></label>`).join("")}</div>`;
     const canEdit = sessionContext?.roles.some(role => role === "ADMIN" || role === "ENGINEER");
     qa("input", form).forEach(input => input.disabled = !canEdit);
 }
@@ -161,9 +169,9 @@ async function saveSettingsConfig() {
             showSettingsNotice("error", `${channel}${name}必须大于 0。`);
             return;
         }
-        if (field === "forceIntervalKn" && (!Number.isInteger(value) || value > 32767)) {
+        if (field === "pressureIntervalMpa" && (!Number.isInteger(value) || value > 32767)) {
             input.focus();
-            showSettingsNotice("error", `${channel}力值间隔必须是 1～32767 kN 的整数。`);
+            showSettingsNotice("error", `${channel}压力间隔必须是 1～32767 MPa 的整数。`);
             return;
         }
         point[field] = value;
@@ -304,6 +312,11 @@ function renderRealtime(snapshot) {
     q("#simulatorStatus").innerHTML = "<i></i>实时数据推送中";
     q("#runStateLabel").textContent = `${stateName(snapshot.state)} · ${new Date(snapshot.capturedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
     q("#runStateLabel").classList.add("live");
+    if (currentRun) {
+        currentRun.state = snapshot.state;
+        currentRun.processStage = snapshot.processStage;
+    }
+    renderShaftVisual();
     renderProcessStage(snapshot.processStage);
     if (snapshot.state === "COMPLETED") {
         currentRun = { ...currentRun, state: "COMPLETED", processStage: snapshot.processStage };
@@ -327,6 +340,22 @@ function stateName(state) {
     return { IDLE: "待启动", RUNNING: "运行中", PAUSED: "已暂停", STOPPED: "已停止", COMPLETED: "已完成" }[state] || state;
 }
 
+function isChannelLifting(channel, run) {
+    if (!channel || channel.paused) return false;
+    if (channel.action === "ASCENDING") return true;
+    return channel.action === "AUTO_TEST" && run?.pointCode === channel.pointCode
+            && run.state === "RUNNING" && run.processStage === "LIFTING";
+}
+
+function renderShaftVisual() {
+    qa(".shaft-node").forEach(node => {
+        const channel = controlState?.channels.find(item => item.pointCode === node.dataset.pointCode);
+        const lifting = isChannelLifting(channel, currentRun);
+        node.classList.toggle("lifting", lifting);
+        q("small", node).textContent = lifting ? "顶升中" : "在线";
+    });
+}
+
 function renderRunState() {
     renderControlState();
 }
@@ -347,7 +376,7 @@ function renderControlState() {
     const target = Number(q("#targetDisplacementInput").value);
     const savedTarget = Number(config?.manualTargetDisplacement || 0);
     const automaticTargetConfigured = Number(config?.maxDisplacement) > 0;
-    const automaticConfigured = automaticTargetConfigured && Number(config?.forceIntervalKn) > 0;
+    const automaticConfigured = automaticTargetConfigured && Number(config?.pressureIntervalMpa) > 0;
     const targetValid = target > 0;
     const targetSaved = !manualTargetDirty && target > 0 && target === savedTarget;
 
@@ -400,7 +429,7 @@ function renderControlState() {
             || anyAction || !channel.zeroed || globalQuickRelease || !automaticConfigured;
     q("#startAutoTestButton").title = !channel.zeroed
             ? "请在自动模式下重新执行本通道位移清零"
-            : !automaticConfigured ? "请先配置自动目标位移和力值间隔" : "";
+            : !automaticConfigured ? "请先配置自动目标位移和压力间隔" : "";
     setButtonState(q("#autoQuickReleaseButton"), globalQuickRelease);
     q("#autoQuickReleaseButton").disabled = !canControl || !available || !automatic
             || globalQuickRelease || anyAction;
@@ -412,13 +441,7 @@ function renderControlState() {
     setButtonState(q("#autoStopButton"), false);
 
     qa("#workChannelStrip button").forEach(button => button.disabled = anyAction || globalQuickRelease);
-    qa(".shaft-node").forEach((node, index) => {
-        const item = controlState.channels[index];
-        const flowing = (globalQuickRelease && !globalPaused)
-                || (!item.paused && ["ASCENDING", "DESCENDING", "MANUAL_QUICK_RELEASE", "AUTO_TEST"]
-                .includes(item.action));
-        node.classList.toggle("flowing", flowing);
-    });
+    renderShaftVisual();
     q("#runStateLabel").textContent = Date.now() < controlErrorUntil ? controlErrorMessage
             : controlCommandPending ? "指令下发中，请等待 PLC 确认"
             : controlState.alarmLocked ? "报警锁定：请关闭全部报警后重新启用"
@@ -451,12 +474,12 @@ function renderChannelLimits() {
     const config = configByPoint.get(activePointCode);
     if (!config) return;
     const displacement = Number(config.maxDisplacement);
-    const forceInterval = Number(config.forceIntervalKn);
+    const pressureInterval = Number(config.pressureIntervalMpa);
     const missing = [displacement <= 0 ? "自动目标位移" : "",
-        forceInterval <= 0 ? "力值间隔" : ""].filter(Boolean);
+        pressureInterval <= 0 ? "压力间隔" : ""].filter(Boolean);
     q("#channelLimitText").textContent = missing.length > 0
             ? `${missing.join("、")}未配置，相关上升动作不可用`
-            : `自动目标 ${displacement.toFixed(2)} mm · 力值间隔 ${forceInterval.toFixed(3)} kN`;
+            : `自动目标 ${displacement.toFixed(2)} mm · 压力间隔 ${pressureInterval.toFixed(0)} MPa`;
 }
 
 function renderValueChannelSelector() {
@@ -604,16 +627,26 @@ function renderChannelSelectors() {
             loadManualTargetInput();
             q("#activeChannelLabel").textContent = channel;
             q(".readings-panel h2").textContent = `${channel}实时数据`;
-            qa(".shaft-node", shaftVisual).forEach((item, itemIndex) => item.classList.toggle("active", itemIndex === index));
+            qa(".shaft-node", shaftVisual).forEach(item =>
+                item.classList.toggle("active", item.dataset.pointCode === activePointCode));
             syncCurrentRun();
             renderControlState();
             renderChannelLimits();
         });
         workStrip.append(button);
+    });
 
+    schematicPoints.forEach(point => {
         const node = document.createElement("div");
-        node.className = `shaft-node ${index === 0 ? "active" : ""}`;
-        node.innerHTML = `<b><i class="flow-arrow">↑</i></b><span>${channel}</span><small>在线</small>`;
+        node.className = `shaft-node ${point.pointCode === activePointCode ? "active" : ""}`;
+        node.dataset.pointCode = point.pointCode;
+        node.style.setProperty("--station-x", point.position);
+        node.innerHTML = `<b class="station-marker" aria-hidden="true"></b>
+            <i class="hydraulic-cylinder" aria-hidden="true">
+                <span class="flow-arrow" style="--flow-index: 0">↑</span>
+                <span class="flow-arrow" style="--flow-index: 1">↑</span>
+                <span class="flow-arrow" style="--flow-index: 2">↑</span>
+            </i><strong>${point.label}</strong><small>在线</small>`;
         shaftVisual.append(node);
     });
 }

@@ -60,14 +60,25 @@ assert.ok(html.includes('id="manualStartButton"'), "手动模式应提供独立�
 assert.ok(html.includes('id="saveManualTargetButton"') && js.includes('/manual-target'), "手动目标位移应支持按通道保存");
 assert.ok(html.includes('id="manualPauseButton"') && html.includes('id="autoPauseButton"'), "手动和自动动作均应支持暂停继续");
 assert.ok(html.includes('id="manualStopButton"') && html.includes('id="autoStopButton"'), "手动和自动动作均应支持停止");
+assert.ok(html.includes('class="ship-schematic"') && html.includes("船尾")
+        && html.includes("机舱") && html.includes("船首方向") && html.includes("示意图非比例"),
+"工作页应展示带船体、机舱和方向标识的轴系位置示意图");
+assert.ok(js.includes('const schematicPoints = [')
+        && js.indexOf('{ pointCode: "TAIL_SHAFT"') < js.indexOf('{ pointCode: "INTERMEDIATE_2"')
+        && js.indexOf('{ pointCode: "INTERMEDIATE_2"') < js.indexOf('{ pointCode: "INTERMEDIATE_1"')
+        && js.indexOf('{ pointCode: "INTERMEDIATE_1"') < js.indexOf('{ pointCode: "FLYWHEEL"')
+        && js.indexOf('{ pointCode: "FLYWHEEL"') < js.indexOf('{ pointCode: "MAIN_ENGINE_1"')
+        && js.indexOf('{ pointCode: "MAIN_ENGINE_1"') < js.indexOf('{ pointCode: "MAIN_ENGINE_2"'),
+"示意图测点必须按真实物理位置排序，不能复用页面通道数组下标");
+assert.ok(js.includes("function isChannelLifting(channel, run)"), "顶升动画应使用独立状态判断");
 assert.ok(!html.includes('data-reading="pressure"') && !html.includes("顶升压力"), "实时数据区不应显示顶升压力");
 assert.ok(!js.includes('"maxPressure"') && !html.includes("压力上限"), "设置页和工作页不应提供压力上限参数");
-assert.ok(js.includes('["力值间隔", "kN", "forceIntervalKn", "1"]')
-        && js.includes('力值间隔必须是 1～32767 kN 的整数'),
-"设置页应以 PLC INT 范围配置 kN 力值间隔");
+assert.ok(js.includes('["压力间隔", "MPa", "pressureIntervalMpa", "1"]')
+        && js.includes('压力间隔必须是 1～32767 MPa 的整数'),
+"设置页应以 PLC INT 范围配置 MPa 压力间隔");
 assert.ok(js.includes("controlCommandPending") && js.includes("指令下发中，请等待 PLC 确认"),
         "控制命令等待 PLC 反馈期间应防止重复提交并显示等待状态");
-assert.ok(!js.includes('"压力间隔"'), "设置页不应继续使用 MPa 压力间隔");
+assert.ok(!js.includes('"力值间隔"'), "设置页不应继续使用 kN 力值间隔");
 assert.ok(html.includes('id="valueChannelStrip"'), "显示数值页应支持选择六个通道");
 assert.ok(html.includes('id="valueTaskSelect"'), "显示数值页应提供已完成测量任务下拉框");
 assert.ok(html.includes('id="saveResultButton"') && html.includes('id="deleteResultButton"'), "显示数值页应提供保存和删除操作");

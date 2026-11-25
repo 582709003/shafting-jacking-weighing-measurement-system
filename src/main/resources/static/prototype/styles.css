@@ -97,17 +97,39 @@ main { padding: 24px 28px 36px; }
 .safety-note i { width: 19px; height: 19px; display: grid; place-items: center; border-radius: 50%; background: var(--yellow); color: #fff; font-style: normal; }
 .legend-dot { color: var(--muted); font-size: 12px; }
 .legend-dot::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--green); }
-.shaft-visual { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); align-items: center; min-height: 150px; padding: 30px 22px; }
-.shaft-visual::before { content: ""; position: absolute; right: 8%; left: 8%; top: 73px; height: 10px; background: linear-gradient(#a7b5bf, #e8eef2 45%, #8092a0); border: 1px solid #78909f; }
-.shaft-node { position: relative; z-index: 1; text-align: center; }
-.shaft-node b { position: relative; display: block; width: 46px; height: 46px; margin: 0 auto 11px; border: 5px solid #d9e2e8; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 3px var(--green); }
-.shaft-node.active b { box-shadow: inset 0 0 0 4px var(--hydraulic), 0 0 0 5px rgba(35,166,168,.14); }
-.shaft-node span { display: block; font-weight: 700; }
-.shaft-node small { color: var(--green); }
-.flow-arrow { position: absolute; inset: 5px; display: none; place-items: center; color: var(--hydraulic); font-style: normal; font-weight: 900; }
-.shaft-node.flowing .flow-arrow { display: grid; animation: hydraulic-flow .72s ease-in-out infinite; }
-.shaft-node.flowing small { color: var(--hydraulic); font-weight: 700; }
-@keyframes hydraulic-flow { 0% { transform: translateY(5px); opacity: .25; } 55% { opacity: 1; } 100% { transform: translateY(-5px); opacity: .25; } }
+.shaft-visual { position: relative; min-height: 250px; overflow: hidden; background: linear-gradient(#fbfdfe, #f3f8fa); }
+.ship-schematic { position: absolute; inset: 0; width: 100%; height: 250px; }
+.ship-hull { fill: url(#shipHullGradient); stroke: #78909f; stroke-width: 3; }
+.ship-cutaway { fill: #f7fafb; stroke: #9db1bd; stroke-width: 2; }
+.shaft-tunnel { fill: #e8f0f4; stroke: #a9bac4; stroke-width: 1.5; }
+.engine-room { fill: #dbe8ed; stroke: var(--sea); stroke-width: 2; }
+.drive-shaft { stroke: #5e7483; stroke-width: 8; }
+.propeller { fill: #78909f; stroke: #4f6574; stroke-width: 2; }
+.flywheel-shape { fill: #d4e1e7; stroke: #526b7b; stroke-width: 4; }
+.flywheel-shape circle:nth-child(2) { fill: #eef4f6; stroke-width: 2; }
+.flywheel-shape circle:nth-child(3) { fill: #526b7b; stroke: none; }
+.engine-shape { fill: none; stroke: #6f8795; stroke-width: 5; stroke-linejoin: round; }
+.waterline { stroke: #8ac9d3; stroke-width: 2; stroke-dasharray: 8 7; }
+.ship-direction-label { fill: var(--sea); font-size: 16px; font-weight: 700; }
+.ship-zone-label { fill: #526b7b; font-size: 13px; font-weight: 700; letter-spacing: .16em; }
+.schematic-note { position: absolute; right: 14px; bottom: 7px; color: var(--muted); font-size: 10px; }
+.shaft-node { position: absolute; z-index: 2; top: 91px; left: var(--station-x); width: 72px; transform: translateX(-50%); text-align: center; }
+.station-marker { display: block; width: 20px; height: 20px; margin: 0 auto -1px; border: 4px solid #d9e2e8; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 2px var(--green); }
+.shaft-node.active .station-marker { border-color: #c5ebec; box-shadow: inset 0 0 0 3px var(--hydraulic), 0 0 0 4px rgba(35,166,168,.15); }
+.hydraulic-cylinder { position: relative; display: block; width: 24px; height: 44px; margin: 0 auto 3px; overflow: hidden; border: 2px solid #8ca0ac; border-top: 0; background: rgba(255,255,255,.88); }
+.hydraulic-cylinder::before { content: ""; position: absolute; top: 4px; left: 4px; width: 12px; height: 4px; background: #7f929e; }
+.shaft-node strong, .shaft-node small { display: block; white-space: nowrap; }
+.shaft-node strong { font-size: 13px; }
+.shaft-node small { color: var(--green); font-size: 11px; }
+.flow-arrow { position: absolute; bottom: calc(1px + var(--flow-index) * 10px); left: 50%; display: none; color: var(--hydraulic); font-style: normal; font-size: 13px; font-weight: 900; line-height: 1; }
+.shaft-node.lifting .hydraulic-cylinder { border-color: var(--hydraulic); background: #e9f8f8; box-shadow: 0 0 10px rgba(35,166,168,.3); }
+.shaft-node.lifting .flow-arrow { display: block; animation: hydraulic-rise .78s ease-in-out infinite; animation-delay: calc(var(--flow-index) * -.19s); }
+.shaft-node.lifting small { color: var(--hydraulic); font-weight: 700; }
+@keyframes hydraulic-rise {
+    0% { transform: translate(-50%, 7px); opacity: .2; }
+    50% { opacity: 1; }
+    100% { transform: translate(-50%, -7px); opacity: .2; }
+}
 .pipeline { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px 16px; font-size: 11px; color: var(--muted); }
 .pipeline i { width: 34px; height: 2px; background: var(--hydraulic); }
 .mode-badge { padding: 5px 8px; color: var(--green); background: #e8f5ee; border: 1px solid #b9ddc9; font-size: 11px; }
@@ -351,5 +373,5 @@ main { padding: 24px 28px 36px; }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
-    .shaft-node.flowing .flow-arrow { animation: none; opacity: 1; transform: none; }
+    .shaft-node.lifting .flow-arrow { animation: none; opacity: 1; transform: translateX(-50%); }
 }

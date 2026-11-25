@@ -301,12 +301,13 @@ public class MeasurementTaskService {
                 if (configPoint.getMaxDisplacement() == null || configPoint.getMaxDisplacement().signum() <= 0) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "请先到设置页配置最大位移");
                 }
-                if (configPoint.getForceIntervalKn() == null || configPoint.getForceIntervalKn().signum() <= 0) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "请先到设置页配置力值间隔");
+                if (configPoint.getPressureIntervalMpa() == null
+                        || configPoint.getPressureIntervalMpa().signum() <= 0) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "请先到设置页配置压力间隔");
                 }
                 deviceSimulator.start(new SimulationStart(run.getId(), task.getId(), run.getPointId(),
                         point.getPointCode(), configPoint.getMaxDisplacement(), configPoint.getMotorRpm(),
-                        configPoint.getStandardForce(), configPoint.getForceIntervalKn(),
+                        configPoint.getStandardForce(), configPoint.getPressureIntervalMpa(),
                         configPoint.getHoldSeconds()));
             }
             case PAUSE -> deviceSimulator.pause(run.getId());

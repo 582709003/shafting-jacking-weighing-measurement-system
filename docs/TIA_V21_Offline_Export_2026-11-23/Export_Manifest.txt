@@ -1,0 +1,47 @@
+﻿TIA Portal V21 offline export
+Started: 2026-11-23 12:08:15
+
+Running TIA processes: 1
+TIA process: ID=9392, ProjectPath=E:\myfiles\plc\项目1_V21_完整副本\项目1_V21.ap21
+Project: 项目1_V21
+Project path: E:\myfiles\plc\项目1_V21_完整副本\项目1_V21.ap21
+
+PLC software containers: 1
+
+PLC software: PLC_1
+BLOCK	Main	LAD	1	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Main_LAD1.xml
+BLOCK	Main_1	LAD	123	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Main_1_LAD123.xml
+BLOCK	Alarm_LV1	LAD	1	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\ALARM\Alarm_LV1_LAD1.xml
+BLOCK	Alarm_Data	DB	12	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\ALARM\Alarm_Data_DB12.xml
+BLOCK	1_Main_Control	LAD	2	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\1_Main_Control_LAD2.xml
+BLOCK	块_2	LAD	8	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\块_2_LAD8.xml
+BLOCK	Rise_Control	LAD	9	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\Rise_Control_LAD9.xml
+BLOCK	Fall_Control	LAD	10	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\Fall_Control_LAD10.xml
+BLOCK	Control	DB	2	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\Control_DB2.xml
+BLOCK	HMI_Basic	DB	16	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\HMI_Basic_DB16.xml
+BLOCK	块_1	LAD	13	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\块_1_LAD13.xml
+BLOCK	Servo_Control	LAD	3	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Servo\Servo_Control_LAD3.xml
+BLOCK	Servo_Data	DB	3	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Servo\Servo_Data_DB3.xml
+BLOCK	Modbus	DB	9	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\Modbus_DB9.xml
+BLOCK	数据块_3	DB	13	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\数据块_3_DB13.xml
+BLOCK	Pressure	LAD	5	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\PRESSURE压力\Pressure_LAD5.xml
+BLOCK	Pressure_Data	DB	5	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\PRESSURE压力\Pressure_Data_DB5.xml
+BLOCK	Sensor传感器	LAD	4	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\Sensor传感器\Sensor传感器_LAD4.xml
+BLOCK	Displacement_Data	DB	4	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\Sensor传感器\Displacement_Data_DB4.xml
+BLOCK	Weighing_Data	DB	6	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\Sensor传感器\Weighing_Data_DB6.xml
+BLOCK	INT_REA	LAD	6	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\Sensor传感器\INT_REA_LAD6.xml
+BLOCK	Recipe	LAD	7	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Recipe\Recipe_LAD7.xml
+BLOCK	Recipe_Control	DB	15	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Recipe\Recipe_Control_DB15.xml
+BLOCK	MES_Control	DB	100	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\MES\MES_Control_DB100.xml
+BLOCK	数据块_2	DB	101	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\MES\数据块_2_DB101.xml
+BLOCK	MES	LAD	12	Optimized	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\MES\MES_LAD12.xml
+TYPE	Servo_Status	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Data_Types\PLC 数据类型\Servo_Status.xml
+TYPE	Recipe_Data	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Data_Types\PLC 数据类型\Recipe_Data.xml
+TYPE	Jack_Data	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Data_Types\PLC 数据类型\Jack_Data.xml
+TYPE	Measured_Data	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Data_Types\PLC 数据类型\Measured_Data.xml
+TYPE	STEP_Control	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Data_Types\PLC 数据类型\STEP_Control.xml
+TAGTABLE	默认变量表	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Tag_Tables\PLC 变量\默认变量表.xml
+COMPILE	Success	Errors=0	Warnings=0
+
+Completed: 2026-11-23 12:11:21
+Exported program blocks: 26

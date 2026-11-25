@@ -48,10 +48,7 @@ public class PlcProperties {
     private String feedbackFaultCode;
     /** 各通道独立位移清零 BOOL 命令点。 */
     private Map<String, String> zeroDisplacement = new LinkedHashMap<>();
-    /** 各通道独立手动目标位移 REAL 参数点。 */
-    private Map<String, String> manualTarget = new LinkedHashMap<>();
-
-    /** PLC 模式启动前校验现场必须提供的连接和新增点位，禁止使用猜测地址。 */
+    /** PLC 模式启动前校验现场必须提供的连接、反馈和清零点位，禁止使用猜测地址。 */
     @PostConstruct
     public void validatePlcConfiguration() {
         if (mode != Mode.PLC) {
@@ -70,7 +67,6 @@ public class PlcProperties {
         requireText(feedbackFaultCode, "app.plc.feedback-fault-code");
         for (String pointCode : PlcPointCodes.ALL) {
             requireText(zeroDisplacement.get(pointCode), "app.plc.zero-displacement." + pointCode);
-            requireText(manualTarget.get(pointCode), "app.plc.manual-target." + pointCode);
         }
     }
 
@@ -120,8 +116,6 @@ public class PlcProperties {
     public void setFeedbackFaultCode(String value) { feedbackFaultCode = value; }
     public Map<String, String> getZeroDisplacement() { return zeroDisplacement; }
     public void setZeroDisplacement(Map<String, String> value) { zeroDisplacement = value; }
-    public Map<String, String> getManualTarget() { return manualTarget; }
-    public void setManualTarget(Map<String, String> value) { manualTarget = value; }
 
     /** 支持的设备运行模式。 */
     public enum Mode { SIMULATOR, PLC }

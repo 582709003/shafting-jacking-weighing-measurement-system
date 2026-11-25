@@ -241,7 +241,7 @@ public class MeasurementConfigService {
         target.setJackingCoefficient(request.jackingCoefficient());
         target.setMaxDisplacement(request.maxDisplacement());
         target.setMotorRpm(request.motorRpm());
-        target.setForceIntervalKn(request.forceIntervalKn());
+        target.setPressureIntervalMpa(request.pressureIntervalMpa());
         target.setHoldSeconds(request.holdSeconds());
     }
 
@@ -253,7 +253,7 @@ public class MeasurementConfigService {
                 configPoint.getStandardForce(), configPoint.getTotalValue(),
                 configPoint.getManualTargetDisplacement(), configPoint.getJackingCoefficient(),
                 configPoint.getMaxDisplacement(), configPoint.getMotorRpm(),
-                configPoint.getForceIntervalKn(), configPoint.getHoldSeconds());
+                configPoint.getPressureIntervalMpa(), configPoint.getHoldSeconds());
     }
 
     private String serialize(Object request) {

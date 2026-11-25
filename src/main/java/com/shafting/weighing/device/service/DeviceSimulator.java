@@ -73,11 +73,11 @@ public class DeviceSimulator {
         BigDecimal displacement = positiveOr(start.maxDisplacementMm(), new BigDecimal("0.40"));
         BigDecimal force = positiveOr(start.standardForceKn(), properties.getFallbackForceKn());
         int rpm = start.motorRpm() != null && start.motorRpm() > 0 ? start.motorRpm() : 1_200;
-        BigDecimal forceIntervalKn = positiveOr(start.forceIntervalKn(), BigDecimal.ZERO);
+        BigDecimal pressureIntervalMpa = positiveOr(start.pressureIntervalMpa(), BigDecimal.ZERO);
         long intervalHoldMillis = Math.max(0L, start.holdSeconds() == null
                 ? 0L : start.holdSeconds() * 1_000L);
         SimulationLimits limits = new SimulationLimits(displacement, rpm, force,
-                forceIntervalKn, intervalHoldMillis);
+                pressureIntervalMpa, intervalHoldMillis);
         sessions.put(start.runId(), new AutomaticProcessSession(start.taskId(), start.pointId(),
                 start.pointCode(), limits, properties));
     }

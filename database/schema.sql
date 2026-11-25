@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS test_config_point (
     jacking_coefficient DECIMAL(12, 4) NOT NULL DEFAULT 1,
     max_displacement DECIMAL(10, 2) NOT NULL DEFAULT 0,
     motor_rpm INT NOT NULL DEFAULT 0,
-    force_interval_kn DECIMAL(12, 4) NOT NULL DEFAULT 0,
+    pressure_interval_mpa DECIMAL(12, 4) NOT NULL DEFAULT 0,
     hold_seconds INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

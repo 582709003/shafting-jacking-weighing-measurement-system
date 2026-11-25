@@ -49,12 +49,48 @@
                         <article class="accent"><span>顶升力</span><strong data-reading="force">0.0</strong><small>kN</small></article>
                         <article><span>电机转速</span><strong data-reading="rpm">0</strong><small>r/min</small></article>
                     </div>
-                    <div class="safety-note"><i>!</i><span id="channelLimitText">正在读取目标位移与力值间隔</span></div>
+                    <div class="safety-note"><i>!</i><span id="channelLimitText">正在读取目标位移与压力间隔</span></div>
                 </section>
 
                 <section class="panel shaft-panel">
                     <div class="panel-head"><div><p>设备示意</p><h2>六通道轴线状态</h2></div><span class="legend-dot">绿色表示可用</span></div>
-                    <div class="shaft-visual" id="shaftVisual"></div>
+                    <div class="shaft-visual" id="shaftVisual">
+                        <svg class="ship-schematic" viewBox="0 0 1000 250" role="img" aria-labelledby="shipSchematicTitle shipSchematicDescription">
+                            <title id="shipSchematicTitle">船舶推进轴系六通道位置示意图</title>
+                            <desc id="shipSchematicDescription">船尾位于左侧，推进轴经过尾轴和两段中间轴后连接飞轮与主机。</desc>
+                            <defs>
+                                <linearGradient id="shipHullGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0" stop-color="#dbe7ed"/>
+                                    <stop offset="1" stop-color="#b8cbd5"/>
+                                </linearGradient>
+                            </defs>
+                            <text class="ship-direction-label" x="62" y="24">船尾</text>
+                            <text class="ship-direction-label" x="824" y="24">船首方向 →</text>
+                            <path class="ship-hull" d="M78 42 H924 Q962 42 980 70 L934 190 H180 Q112 185 78 143 Z"/>
+                            <path class="ship-cutaway" d="M116 61 H920 L900 165 H163 Q128 160 116 136 Z"/>
+                            <path class="shaft-tunnel" d="M112 78 H604 V122 H112 Z"/>
+                            <text class="ship-zone-label" x="330" y="74">轴隧</text>
+                            <rect class="engine-room" x="604" y="56" width="302" height="109" rx="4"/>
+                            <text class="ship-zone-label" x="718" y="73">机舱</text>
+                            <g class="propeller" transform="translate(55 101)">
+                                <circle r="8"/>
+                                <path d="M-3 -7 C-26 -35 -35 -17 -12 1 C-33 22 -18 32 1 11 C23 35 35 17 12 -1 C34 -20 18 -32 -1 -11 Z"/>
+                            </g>
+                            <line class="drive-shaft" x1="55" y1="101" x2="900" y2="101"/>
+                            <g class="flywheel-shape" transform="translate(598 101)">
+                                <circle r="31"/>
+                                <circle r="17"/>
+                                <circle r="5"/>
+                            </g>
+                            <g class="engine-shape">
+                                <path d="M630 81 H893 V123 H630 Z"/>
+                                <path d="M655 81 V57 H699 V81 M731 81 V57 H775 V81 M807 81 V57 H851 V81"/>
+                                <path d="M646 123 V143 H878 V123"/>
+                            </g>
+                            <line class="waterline" x1="30" y1="191" x2="970" y2="191"/>
+                        </svg>
+                        <span class="schematic-note">示意图非比例</span>
+                    </div>
                     <div class="pipeline"><span>低压泵</span><i></i><span>高压泵</span><i></i><span>压力总管</span><i></i><span>当前油缸</span></div>
                 </section>
 
@@ -103,7 +139,7 @@
                     <ol class="sequence">
                         <li class="current" data-stage="PRECHECK"><b>1</b><span>启动检查<small>检查通道、参数与报警</small></span></li>
                         <li data-stage="LIFTING"><b>2</b><span>逐级顶升<small>模拟器连续采样</small></span></li>
-                        <li data-stage="HOLDING"><b>3</b><span>力值间隔保持<small>等待设定时间后继续，目标到达后结束顶升</small></span></li>
+                        <li data-stage="HOLDING"><b>3</b><span>压力间隔保持<small>等待设定时间后继续，目标到达后结束顶升</small></span></li>
                         <li data-stage="LOWERING"><b>4</b><span>逐级下降<small>模拟器连续采样</small></span></li>
                     </ol>
                 </section>

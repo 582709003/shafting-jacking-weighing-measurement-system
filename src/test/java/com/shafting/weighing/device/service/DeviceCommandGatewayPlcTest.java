@@ -110,12 +110,11 @@ class DeviceCommandGatewayPlcTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void shouldWriteAndReadBackManualTarget() {
+    void shouldReuseExistingLiftDistanceForManualTarget() {
         PlcProperties properties = plcProperties();
-        properties.setManualTarget(Map.of("TAIL_SHAFT", "%DB101.DBD20:REAL"));
         S7PlcClient client = mock(S7PlcClient.class);
         when(client.readValues(anyMap())).thenReturn(
-                Map.of("%DB101.DBD20:REAL", new BigDecimal("0.25")));
+                Map.of("%DB100.DBD204:REAL", new BigDecimal("0.25")));
         DeviceCommandGateway gateway = new DeviceCommandGateway(properties, client);
 
         gateway.writeManualTarget("TAIL_SHAFT", new BigDecimal("0.25"));
@@ -123,7 +122,7 @@ class DeviceCommandGatewayPlcTest {
         ArgumentCaptor<Map<String, Object>> writes = ArgumentCaptor.forClass(Map.class);
         verify(client).writeValues(writes.capture());
         assertThat(writes.getValue()).containsExactly(
-                Map.entry("%DB101.DBD20:REAL", 0.25F));
+                Map.entry("%DB100.DBD204:REAL", 0.25F));
     }
 
     private PlcProperties plcProperties() {

@@ -52,7 +52,7 @@ class PhaseSixIntegrationTest {
         controlStateService.resetControls();
         jdbcTemplate.update("UPDATE alarm_event SET status = 'CLOSED'");
         jdbcTemplate.update("UPDATE test_config_point SET max_displacement = 0.40, "
-                + "manual_target_displacement = 0.20, force_interval_kn = 1, hold_seconds = 1");
+                + "manual_target_displacement = 0.20, pressure_interval_mpa = 1, hold_seconds = 1");
     }
 
     @Test
@@ -143,8 +143,8 @@ class PhaseSixIntegrationTest {
 
     @Test
     @WithMockUser(username = "operator", roles = "OPERATOR")
-    void shouldRejectAutomaticTestWithoutForceInterval() throws Exception {
-        jdbcTemplate.update("UPDATE test_config_point SET force_interval_kn = 0 WHERE point_id = 4");
+    void shouldRejectAutomaticTestWithoutPressureInterval() throws Exception {
+        jdbcTemplate.update("UPDATE test_config_point SET pressure_interval_mpa = 0 WHERE point_id = 4");
         execute("AUTO_CONNECT", "FLYWHEEL", null);
         execute("ZERO_DISPLACEMENT", "FLYWHEEL", null);
 

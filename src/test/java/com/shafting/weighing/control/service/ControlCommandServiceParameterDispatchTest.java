@@ -113,7 +113,7 @@ class ControlCommandServiceParameterDispatchTest {
         config.setJackingCoefficient(BigDecimal.ONE);
         config.setMaxDisplacement(new BigDecimal("0.40"));
         config.setMotorRpm(1200);
-        config.setForceIntervalKn(new BigDecimal("20"));
+        config.setPressureIntervalMpa(new BigDecimal("20"));
         config.setHoldSeconds(5);
         return config;
     }

@@ -48,9 +48,9 @@ public class TestConfigPoint {
     @TableField("motor_rpm")
     private Integer motorRpm;
 
-    /** 自动顶升累计力值间隔，单位 kN。 */
-    @TableField("force_interval_kn")
-    private BigDecimal forceIntervalKn;
+    /** 自动顶升压力间隔，单位 MPa。 */
+    @TableField("pressure_interval_mpa")
+    private BigDecimal pressureIntervalMpa;
 
     /** 到达目标后的保持时间，单位秒。 */
     @TableField("hold_seconds")
@@ -128,12 +128,12 @@ public class TestConfigPoint {
         this.motorRpm = motorRpm;
     }
 
-    public BigDecimal getForceIntervalKn() {
-        return forceIntervalKn;
+    public BigDecimal getPressureIntervalMpa() {
+        return pressureIntervalMpa;
     }
 
-    public void setForceIntervalKn(BigDecimal forceIntervalKn) {
-        this.forceIntervalKn = forceIntervalKn;
+    public void setPressureIntervalMpa(BigDecimal pressureIntervalMpa) {
+        this.pressureIntervalMpa = pressureIntervalMpa;
     }
 
     public Integer getHoldSeconds() {

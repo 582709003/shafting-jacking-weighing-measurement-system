@@ -1,0 +1,13 @@
+﻿Name	Number	ProgrammingLanguage	MemoryLayout	XML
+Control	2	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\Control_DB2.xml
+Servo_Data	3	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Servo\Servo_Data_DB3.xml
+Displacement_Data	4	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\Sensor传感器\Displacement_Data_DB4.xml
+Pressure_Data	5	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\PRESSURE压力\Pressure_Data_DB5.xml
+Weighing_Data	6	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\Sensor传感器\Weighing_Data_DB6.xml
+Modbus	9	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\Modbus_DB9.xml
+Alarm_Data	12	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\ALARM\Alarm_Data_DB12.xml
+数据块_3	13	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Tool\数据块_3_DB13.xml
+Recipe_Control	15	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Recipe\Recipe_Control_DB15.xml
+HMI_Basic	16	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\Control\HMI_Basic_DB16.xml
+MES_Control	100	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\MES\MES_Control_DB100.xml
+数据块_2	101	DB	Standard	E:\myfiles\plc\TIA_V21_Offline_Export_2026-11-23\XML_Program_Blocks\程序块\MES\数据块_2_DB101.xml

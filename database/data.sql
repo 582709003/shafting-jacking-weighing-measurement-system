@@ -19,12 +19,12 @@ INSERT INTO test_config (id, config_name, config_version, status) VALUES
 ON DUPLICATE KEY UPDATE config_name = VALUES(config_name);
 
 INSERT INTO test_config_point
-    (id, config_id, point_id, standard_force, total_value, manual_target_displacement, jacking_coefficient, max_displacement, motor_rpm, force_interval_kn, hold_seconds)
+    (id, config_id, point_id, standard_force, total_value, manual_target_displacement, jacking_coefficient, max_displacement, motor_rpm, pressure_interval_mpa, hold_seconds)
 VALUES
-    (1, 1, 1, 0, 0, 0, 1, 0, 0, 0.5, 0),
-    (2, 1, 2, 0, 0, 0, 1, 0, 0, 0.5, 0),
-    (3, 1, 3, 0, 0, 0, 1, 0, 0, 0.5, 0),
-    (4, 1, 4, 0, 0, 0, 1, 0, 0, 0.5, 0),
-    (5, 1, 5, 0, 0, 0, 1, 0, 0, 0.5, 0),
-    (6, 1, 6, 0, 0, 0, 1, 0, 0, 0.5, 0)
+    (1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0),
+    (2, 1, 2, 0, 0, 0, 1, 0, 0, 0, 0),
+    (3, 1, 3, 0, 0, 0, 1, 0, 0, 0, 0),
+    (4, 1, 4, 0, 0, 0, 1, 0, 0, 0, 0),
+    (5, 1, 5, 0, 0, 0, 1, 0, 0, 0, 0),
+    (6, 1, 6, 0, 0, 0, 1, 0, 0, 0, 0)
 ON DUPLICATE KEY UPDATE config_id = VALUES(config_id), point_id = VALUES(point_id);

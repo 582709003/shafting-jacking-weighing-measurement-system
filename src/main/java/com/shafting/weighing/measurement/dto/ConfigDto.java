@@ -49,8 +49,8 @@ public final class ConfigDto {
             BigDecimal maxDisplacement,
             /** 模拟或设备运行转速，单位 r/min。 */
             Integer motorRpm,
-            /** 自动顶升累计力值间隔，单位 kN，只允许 1～32767 的正整数。 */
-            BigDecimal forceIntervalKn,
+            /** 自动顶升压力间隔，单位 MPa，只允许 1～32767 的正整数。 */
+            BigDecimal pressureIntervalMpa,
             /** 到达目标后的保持时间，单位秒。 */
             Integer holdSeconds) {
     }
@@ -83,11 +83,11 @@ public final class ConfigDto {
             @NotNull(message = "自动目标位移必须大于0") @DecimalMin(value = "0", inclusive = false) BigDecimal maxDisplacement,
             /** 转速，单位 r/min，必须为正整数。 */
             @NotNull(message = "顶升速度必须大于0且是整数") @Positive Integer motorRpm,
-            /** 自动顶升累计力值间隔，单位 kN，只允许 1～32767 的正整数。 */
-            @NotNull(message = "力值间隔必须大于0且是整数")
-            @DecimalMin(value = "1", message = "力值间隔必须大于0且是整数")
-            @DecimalMax(value = "32767", message = "力值间隔不能超过32767kN")
-            @Digits(integer = 5, fraction = 0, message = "力值间隔必须是整数") BigDecimal forceIntervalKn,
+            /** 自动顶升压力间隔，单位 MPa，只允许 1～32767 的正整数。 */
+            @NotNull(message = "压力间隔必须大于0且是整数")
+            @DecimalMin(value = "1", message = "压力间隔必须大于0且是整数")
+            @DecimalMax(value = "32767", message = "压力间隔不能超过32767MPa")
+            @Digits(integer = 5, fraction = 0, message = "压力间隔必须是整数") BigDecimal pressureIntervalMpa,
             /** 保持时间，单位秒，必须为正整数。 */
             @NotNull(message = "时间间隔必须大于0且是整数") @Positive Integer holdSeconds) {
     }

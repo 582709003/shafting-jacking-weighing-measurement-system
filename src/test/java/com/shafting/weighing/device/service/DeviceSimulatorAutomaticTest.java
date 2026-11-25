@@ -35,7 +35,7 @@ class DeviceSimulatorAutomaticTest {
                 mock(ControlStateService.class), gateway);
         simulator.start(new SimulationStart(1L, 2L, 3L, "TAIL_SHAFT",
                 new BigDecimal("0.40"), 1_200, new BigDecimal("0.5"),
-                new BigDecimal("0.5"), 0));
+                new BigDecimal("25"), 0));
 
         simulator.tick();
         Thread.sleep(2L);

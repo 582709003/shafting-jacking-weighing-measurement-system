@@ -1,0 +1,170 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V21" />
+  <DocumentInfo>
+    <Created>2026-11-23T04:11:06.6864293Z</Created>
+    <ExportSetting>WithDefaults</ExportSetting>
+    <InstalledProducts>
+      <Product>
+        <DisplayName>Totally Integrated Automation Portal</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+      <Product>
+        <DisplayName>SINAMICS Startdrive Advanced</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+      <OptionPackage>
+        <DisplayName>SINAMICS Startdrive G110M, G120, G120C, G120D, G120P, G115D</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </OptionPackage>
+      <OptionPackage>
+        <DisplayName>SINAMICS Startdrive G130, G150, S120, S150, G200, G220, S200, S210, S220, Innomotics MVD</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </OptionPackage>
+      <Product>
+        <DisplayName>STEP 7 Professional</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+      <OptionPackage>
+        <DisplayName>Tech WebApplication</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </OptionPackage>
+      <OptionPackage>
+        <DisplayName>STEP 7 Safety</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </OptionPackage>
+      <Product>
+        <DisplayName>WinCC Basic/Comfort/Advanced</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+    </InstalledProducts>
+  </DocumentInfo>
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <DBAccessibleFromOPCUA>true</DBAccessibleFromOPCUA>
+      <HeaderAuthor />
+      <HeaderFamily />
+      <HeaderName />
+      <HeaderVersion>0.1</HeaderVersion>
+      <Interface>
+        <Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+          <Section Name="Static">
+            <Member Name="Alarm_LV1" Datatype="Array[1..100] of Bool" Remanence="NonRetain" Accessibility="Public">
+              <AttributeList>
+                <BooleanAttribute Name="ExternalAccessible" SystemDefined="true">true</BooleanAttribute>
+                <BooleanAttribute Name="ExternalVisible" SystemDefined="true">true</BooleanAttribute>
+                <BooleanAttribute Name="ExternalWritable" SystemDefined="true">true</BooleanAttribute>
+                <BooleanAttribute Name="SetPoint" SystemDefined="true">false</BooleanAttribute>
+              </AttributeList>
+              <Subelement Path="1">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">压力传感器器故障</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="2">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">压力传感器器断线</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="3">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">位移传感器故障</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="4">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">称重传感器故障</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="5">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">位移传感器通讯异常</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="6">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">称重传感器通讯异常</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="7">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">7-1电磁换向阀无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="8">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">7-2电磁换向阀无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="9">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">7-3电磁换向阀无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="10">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">7-4电磁换向阀无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="11">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">7-5电磁换向阀无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="12">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">7-6电磁换向阀无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="13">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">7-7电磁换向阀无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="14">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">7-8电磁换向阀无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+              <Subelement Path="15">
+                <Comment>
+                  <MultiLanguageText Lang="zh-CN">油缸无动作</MultiLanguageText>
+                </Comment>
+              </Subelement>
+            </Member>
+          </Section>
+        </Sections>
+      </Interface>
+      <IsOnlyStoredInLoadMemory>false</IsOnlyStoredInLoadMemory>
+      <IsWriteProtectedInAS>false</IsWriteProtectedInAS>
+      <MemoryLayout>Standard</MemoryLayout>
+      <Name>Alarm_Data</Name>
+      <Namespace />
+      <Number>12</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>zh-CN</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="3" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="4" CompositionName="Items">
+            <AttributeList>
+              <Culture>zh-CN</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

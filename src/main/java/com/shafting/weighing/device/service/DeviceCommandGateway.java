@@ -136,12 +136,12 @@ public class DeviceCommandGateway {
                 values.get("motorRpm").intValue(), Instant.now());
     }
 
-    /** 手动上升前写入当前通道目标位移 REAL 点并回读一致。 */
+    /** 手动上升前复用当前通道配方中的顶升距离 REAL 点，并回读一致。 */
     public void writeManualTarget(String pointCode, BigDecimal targetDisplacementMm) {
         if (!properties.isPlcMode()) {
             return;
         }
-        String address = requireConfiguredAddress(properties.getManualTarget(), pointCode, "手动目标位移");
+        String address = PlcPointCatalog.channel(pointCode).maxDisplacement();
         writeAndVerify(Map.of(address, targetDisplacementMm.floatValue()),
                 Map.of(address, targetDisplacementMm));
     }
@@ -155,13 +155,13 @@ public class DeviceCommandGateway {
         Map<String, Object> writes = new LinkedHashMap<>();
         writes.put(tags.maxDisplacement(), values.maxDisplacement().floatValue());
         writes.put(tags.configuredMotorRpm(), values.motorRpm().floatValue());
-        writes.put(tags.forceInterval(), values.forceIntervalKn());
+        writes.put(tags.pressureInterval(), values.pressureIntervalMpa());
         writes.put(tags.holdSeconds(), values.holdSeconds().floatValue());
 
         Map<String, BigDecimal> expected = new LinkedHashMap<>();
         expected.put(tags.maxDisplacement(), values.maxDisplacement());
         expected.put(tags.configuredMotorRpm(), values.motorRpm());
-        expected.put(tags.forceInterval(), BigDecimal.valueOf(values.forceIntervalKn()));
+        expected.put(tags.pressureInterval(), BigDecimal.valueOf(values.pressureIntervalMpa()));
         expected.put(tags.holdSeconds(), values.holdSeconds());
         writeAndVerify(writes, expected);
     }
@@ -226,7 +226,7 @@ public class DeviceCommandGateway {
     public record AutomaticConfiguration(
             /** 自动目标位移，单位 mm。 */ BigDecimal maxDisplacement,
             /** 顶升速度，单位 r/min。 */ BigDecimal motorRpm,
-            /** 力值间隔，单位 kN，范围 1～32767。 */ int forceIntervalKn,
+            /** 压力间隔，单位 MPa，范围 1～32767。 */ int pressureIntervalMpa,
             /** 间隔保持时间，单位秒。 */ BigDecimal holdSeconds) { }
 }
 

@@ -41,7 +41,7 @@ class PhaseTwoIntegrationTest {
 
     @BeforeEach
     void configureExecutionLimits() {
-        jdbcTemplate.update("UPDATE test_config_point SET max_displacement = 0.40, force_interval_kn = 0.5");
+        jdbcTemplate.update("UPDATE test_config_point SET max_displacement = 0.40, pressure_interval_mpa = 25");
     }
 
     @Test

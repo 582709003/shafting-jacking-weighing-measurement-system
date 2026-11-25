@@ -10,10 +10,13 @@ import java.time.Instant;
 /**
  * 单通道自动顶升测量状态机。
  *
- * <p>上升和下降均按累计力值间隔暂停；配置的保持时间结束后才产生一组
- * 位移和顶升力采样。上升以最大位移结束，下降以顶升力归零结束。</p>
+ * <p>上升和下降均按压力间隔暂停；配置的保持时间结束后才产生一组
+ * 位移和顶升力采样。上升以最大位移结束，下降以压力归零结束。</p>
  */
 final class AutomaticProcessSession {
+
+    /** PLC 压力模拟量的量程上限；仅用于无设备时的线性流程模拟。 */
+    private static final BigDecimal SIMULATED_MAX_PRESSURE_MPA = new BigDecimal("100");
 
     private final Long taskId;
     private final Long pointId;
@@ -30,8 +33,9 @@ final class AutomaticProcessSession {
     private String state = "RUNNING";
     private String pendingSampleStage;
     private boolean maximumDisplacementReached;
-    private BigDecimal nextAscendingThresholdKn;
-    private BigDecimal nextDescendingThresholdKn;
+    private BigDecimal nextAscendingThresholdMpa;
+    private BigDecimal nextDescendingThresholdMpa;
+    private BigDecimal pressureMpa = BigDecimal.ZERO;
     private BigDecimal displacementMm = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
     private BigDecimal forceKn = BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP);
     private int motorRpm;
@@ -49,7 +53,7 @@ final class AutomaticProcessSession {
         holdMillis = Math.max(0L, limits.intervalHoldMillis());
         lastTickMillis = System.currentTimeMillis();
         phaseDeadlineMillis = lastTickMillis + Math.max(0L, properties.getPrecheckMs());
-        nextAscendingThresholdKn = limits.forceIntervalKn();
+        nextAscendingThresholdMpa = limits.pressureIntervalMpa();
     }
 
     /** 推进一步自动流程，并返回本次需要下发的设备动作和可保存的稳定采样阶段。 */
@@ -119,9 +123,9 @@ final class AutomaticProcessSession {
             }
             return beginHolding(nowMillis, "LIFTING", true);
         }
-        if (forceKn.compareTo(nextAscendingThresholdKn) >= 0) {
+        if (pressureMpa.compareTo(nextAscendingThresholdMpa) >= 0) {
             if (simulated) {
-                applyForceThreshold(nextAscendingThresholdKn);
+                applyPressureThreshold(nextAscendingThresholdMpa);
             }
             return beginHolding(nowMillis, "LIFTING", false);
         }
@@ -133,7 +137,7 @@ final class AutomaticProcessSession {
             applyRatio(currentRatio().subtract(durationRatio(elapsedMillis, loweringMillis))
                     .max(BigDecimal.ZERO));
         }
-        if (forceKn.signum() <= 0) {
+        if (pressureMpa.signum() <= 0) {
             if (simulated) {
                 applyRatio(BigDecimal.ZERO);
             }
@@ -142,10 +146,10 @@ final class AutomaticProcessSession {
             // 下降归零必须明确停止液压动作，并将当前即时值作为最后一组下降采样保存。
             return step(DeviceAction.STOP, "LOWERING");
         }
-        if (nextDescendingThresholdKn != null && nextDescendingThresholdKn.signum() > 0
-                && forceKn.compareTo(nextDescendingThresholdKn) <= 0) {
+        if (nextDescendingThresholdMpa != null && nextDescendingThresholdMpa.signum() > 0
+                && pressureMpa.compareTo(nextDescendingThresholdMpa) <= 0) {
             if (simulated) {
-                applyForceThreshold(nextDescendingThresholdKn);
+                applyPressureThreshold(nextDescendingThresholdMpa);
             }
             return beginHolding(nowMillis, "LOWERING", false);
         }
@@ -166,18 +170,17 @@ final class AutomaticProcessSession {
         }
         String sampleStage = pendingSampleStage;
         if (maximumDisplacementReached) {
-            // 下降间隔从传感器实际峰值递减，不能使用配置标准值代替现场峰值。
-            nextDescendingThresholdKn = forceKn.subtract(limits.forceIntervalKn());
+            nextDescendingThresholdMpa = pressureMpa.subtract(limits.pressureIntervalMpa());
             phase = Phase.LOWERING;
             maximumDisplacementReached = false;
             return step(DeviceAction.DESCEND, sampleStage);
         }
         if ("LIFTING".equals(sampleStage)) {
-            nextAscendingThresholdKn = nextAscendingThresholdKn.add(limits.forceIntervalKn());
+            nextAscendingThresholdMpa = nextAscendingThresholdMpa.add(limits.pressureIntervalMpa());
             phase = Phase.LIFTING;
             return step(DeviceAction.ASCEND, sampleStage);
         }
-        nextDescendingThresholdKn = nextDescendingThresholdKn.subtract(limits.forceIntervalKn());
+        nextDescendingThresholdMpa = nextDescendingThresholdMpa.subtract(limits.pressureIntervalMpa());
         phase = Phase.LOWERING;
         return step(DeviceAction.DESCEND, sampleStage);
     }
@@ -191,6 +194,10 @@ final class AutomaticProcessSession {
         deviceReadingAvailable = true;
         displacementMm = reading.displacementMm();
         forceKn = reading.forceKn();
+        BigDecimal ratio = limits.maxDisplacementMm().signum() == 0 ? BigDecimal.ZERO
+                : displacementMm.divide(limits.maxDisplacementMm(), 12, RoundingMode.HALF_UP);
+        pressureMpa = SIMULATED_MAX_PRESSURE_MPA.multiply(
+                ratio.max(BigDecimal.ZERO).min(BigDecimal.ONE));
         motorRpm = reading.motorRpm();
         capturedAt = reading.capturedAt();
     }
@@ -200,21 +207,20 @@ final class AutomaticProcessSession {
         return phase == Phase.LIFTING || phase == Phase.LOWERING ? limits.motorRpm() : 0;
     }
 
-    private void applyForceThreshold(BigDecimal thresholdKn) {
-        BigDecimal ratio = limits.maxForceKn().signum() == 0 ? BigDecimal.ZERO
-                : thresholdKn.divide(limits.maxForceKn(), 12, RoundingMode.HALF_UP);
+    private void applyPressureThreshold(BigDecimal thresholdMpa) {
+        BigDecimal ratio = thresholdMpa.divide(SIMULATED_MAX_PRESSURE_MPA, 12, RoundingMode.HALF_UP);
         applyRatio(ratio.max(BigDecimal.ZERO).min(BigDecimal.ONE));
     }
 
     private void applyRatio(BigDecimal ratio) {
         displacementMm = limits.maxDisplacementMm().multiply(ratio).setScale(2, RoundingMode.HALF_UP);
         forceKn = limits.maxForceKn().multiply(ratio).setScale(1, RoundingMode.HALF_UP);
+        pressureMpa = SIMULATED_MAX_PRESSURE_MPA.multiply(ratio);
         capturedAt = Instant.now();
     }
 
     private BigDecimal currentRatio() {
-        return limits.maxForceKn().signum() == 0 ? BigDecimal.ZERO
-                : forceKn.divide(limits.maxForceKn(), 12, RoundingMode.HALF_UP);
+        return pressureMpa.divide(SIMULATED_MAX_PRESSURE_MPA, 12, RoundingMode.HALF_UP);
     }
 
     private BigDecimal durationRatio(long elapsedMillis, long durationMillis) {
@@ -282,8 +288,8 @@ record SimulationLimits(
         int motorRpm,
         /** 自动测试模拟峰值顶升力，单位 kN。 */
         BigDecimal maxForceKn,
-        /** 自动测试累计力值间隔，单位 kN。 */
-        BigDecimal forceIntervalKn,
+        /** 自动测试压力间隔，单位 MPa。 */
+        BigDecimal pressureIntervalMpa,
         /** 每次暂停保持时间，单位毫秒。 */
         long intervalHoldMillis) {
 }

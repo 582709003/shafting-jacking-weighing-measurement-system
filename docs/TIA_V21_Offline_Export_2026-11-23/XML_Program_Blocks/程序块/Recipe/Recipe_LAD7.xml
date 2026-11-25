@@ -1,0 +1,1377 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V21" />
+  <DocumentInfo>
+    <Created>2026-11-23T04:11:11.811088Z</Created>
+    <ExportSetting>WithDefaults</ExportSetting>
+    <InstalledProducts>
+      <Product>
+        <DisplayName>Totally Integrated Automation Portal</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+      <Product>
+        <DisplayName>SINAMICS Startdrive Advanced</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+      <OptionPackage>
+        <DisplayName>SINAMICS Startdrive G110M, G120, G120C, G120D, G120P, G115D</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </OptionPackage>
+      <OptionPackage>
+        <DisplayName>SINAMICS Startdrive G130, G150, S120, S150, G200, G220, S200, S210, S220, Innomotics MVD</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </OptionPackage>
+      <Product>
+        <DisplayName>STEP 7 Professional</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+      <OptionPackage>
+        <DisplayName>Tech WebApplication</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </OptionPackage>
+      <OptionPackage>
+        <DisplayName>STEP 7 Safety</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </OptionPackage>
+      <Product>
+        <DisplayName>WinCC Basic/Comfort/Advanced</DisplayName>
+        <DisplayVersion>V21</DisplayVersion>
+      </Product>
+    </InstalledProducts>
+  </DocumentInfo>
+  <SW.Blocks.FC ID="0">
+    <AttributeList>
+      <AutoNumber>true</AutoNumber>
+      <HeaderAuthor />
+      <HeaderFamily />
+      <HeaderName />
+      <HeaderVersion>0.1</HeaderVersion>
+      <Interface>
+        <Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+          <Section Name="Input" />
+          <Section Name="Output" />
+          <Section Name="InOut" />
+          <Section Name="Temp" />
+          <Section Name="Constant" />
+          <Section Name="Return">
+            <Member Name="Ret_Val" Datatype="Void" Accessibility="Public" />
+          </Section>
+        </Sections>
+      </Interface>
+      <IsIECCheckEnabled>false</IsIECCheckEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <Name>Recipe</Name>
+      <Namespace />
+      <Number>7</Number>
+      <ProgrammingLanguage>LAD</ProgrammingLanguage>
+      <SetENOAutomatically>false</SetENOAutomatically>
+      <UDABlockProperties />
+      <UDAEnableTagReadback>false</UDAEnableTagReadback>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>zh-CN</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <SW.Blocks.CompileUnit ID="3" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource>
+            <StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+              <Token Text="IF" UId="21" />
+              <Blank Num="1" UId="22" />
+              <Access Scope="GlobalVariable" UId="23">
+                <Symbol UId="24">
+                  <Component Name="HMI_Basic" UId="25">
+                    <BooleanAttribute Name="HasQuotes" UId="26">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="27" />
+                  <Component Name="轴系选择" UId="28" />
+                  <Token Text="." UId="29" />
+                  <Component Name="尾轴" UId="30" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="31" />
+              <Token Text="=" UId="32" />
+              <Blank Num="1" UId="33" />
+              <Access Scope="LiteralConstant" UId="34">
+                <Constant UId="35">
+                  <ConstantValue UId="37">TRUE</ConstantValue>
+                </Constant>
+              </Access>
+              <Blank Num="1" UId="38" />
+              <Token Text="THEN" UId="39" />
+              <NewLine Num="1" UId="40" />
+              <Blank Num="4" UId="41" />
+              <Access Scope="GlobalVariable" UId="42">
+                <Symbol UId="43">
+                  <Component Name="Recipe_Control" UId="44">
+                    <BooleanAttribute Name="HasQuotes" UId="45">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="46" />
+                  <Component Name="Current_Recipe" UId="47" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="48" />
+              <Token Text=":=" UId="49" />
+              <Blank Num="1" UId="50" />
+              <Access Scope="GlobalVariable" UId="51">
+                <Symbol UId="52">
+                  <Component Name="Recipe_Control" UId="53">
+                    <BooleanAttribute Name="HasQuotes" UId="54">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="55" />
+                  <Component Name="尾轴" UId="56" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="57" />
+              <NewLine Num="1" UId="58" />
+              <Blank Num="4" UId="59" />
+              <Access Scope="GlobalVariable" UId="60">
+                <Symbol UId="61">
+                  <Component Name="MES_Control" UId="62">
+                    <BooleanAttribute Name="HasQuotes" UId="63">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="64" />
+                  <Component Name="轴系数据" UId="65" />
+                  <Token Text="." UId="66" />
+                  <Component Name="尾轴" UId="67" />
+                  <Token Text="." UId="68" />
+                  <Component Name="顶升距离" UId="69" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="70" />
+              <Token Text=":=" UId="71" />
+              <Blank Num="1" UId="72" />
+              <Access Scope="GlobalVariable" UId="73">
+                <Symbol UId="74">
+                  <Component Name="Displacement_Data" UId="75">
+                    <BooleanAttribute Name="HasQuotes" UId="76">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="77" />
+                  <Component Name="Current_Displacement" UId="78" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="79" />
+              <NewLine Num="1" UId="80" />
+              <Blank Num="4" UId="81" />
+              <Access Scope="GlobalVariable" UId="82">
+                <Symbol UId="83">
+                  <Component Name="MES_Control" UId="84">
+                    <BooleanAttribute Name="HasQuotes" UId="85">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="86" />
+                  <Component Name="轴系数据" UId="87" />
+                  <Token Text="." UId="88" />
+                  <Component Name="尾轴" UId="89" />
+                  <Token Text="." UId="90" />
+                  <Component Name="顶升压力" UId="91" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="92" />
+              <Token Text=":=" UId="93" />
+              <Blank Num="1" UId="94" />
+              <Access Scope="GlobalVariable" UId="95">
+                <Symbol UId="96">
+                  <Component Name="Pressure_Data" UId="97">
+                    <BooleanAttribute Name="HasQuotes" UId="98">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="99" />
+                  <Component Name="Current_Pressure" UId="100" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="101" />
+              <NewLine Num="1" UId="102" />
+              <Blank Num="4" UId="103" />
+              <Access Scope="GlobalVariable" UId="104">
+                <Symbol UId="105">
+                  <Component Name="MES_Control" UId="106">
+                    <BooleanAttribute Name="HasQuotes" UId="107">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="108" />
+                  <Component Name="轴系数据" UId="109" />
+                  <Token Text="." UId="110" />
+                  <Component Name="尾轴" UId="111" />
+                  <Token Text="." UId="112" />
+                  <Component Name="顶升速度" UId="113" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="114" />
+              <Token Text=":=" UId="115" />
+              <Blank Num="1" UId="116" />
+              <Access Scope="GlobalVariable" UId="117">
+                <Symbol UId="118">
+                  <Component Name="Servo_Data" UId="119">
+                    <BooleanAttribute Name="HasQuotes" UId="120">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="121" />
+                  <Component Name="Axis1" UId="122" />
+                  <Token Text="." UId="123" />
+                  <Component Name="Servo_Current_Velocity" UId="124">
+                    <Token Text="[" UId="125" />
+                    <Access Scope="LiteralConstant" UId="126">
+                      <Constant UId="127">
+                        <ConstantValue UId="129">1</ConstantValue>
+                      </Constant>
+                    </Access>
+                    <Token Text="]" UId="130" />
+                  </Component>
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="131" />
+              <NewLine Num="1" UId="132" />
+              <Blank Num="4" UId="133" />
+              <Access Scope="GlobalVariable" UId="134">
+                <Symbol UId="135">
+                  <Component Name="MES_Control" UId="136">
+                    <BooleanAttribute Name="HasQuotes" UId="137">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="138" />
+                  <Component Name="轴系数据" UId="139" />
+                  <Token Text="." UId="140" />
+                  <Component Name="尾轴" UId="141" />
+                  <Token Text="." UId="142" />
+                  <Component Name="顶升力" UId="143" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="144" />
+              <Token Text=":=" UId="145" />
+              <Blank Num="1" UId="146" />
+              <Access Scope="GlobalVariable" UId="147">
+                <Symbol UId="148">
+                  <Component Name="Weighing_Data" UId="149">
+                    <BooleanAttribute Name="HasQuotes" UId="150">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="151" />
+                  <Component Name="Current_Weighing" UId="152" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="153" />
+              <NewLine Num="1" UId="154" />
+              <Token Text="END_IF" UId="155" />
+              <Token Text=";" UId="156" />
+              <NewLine Num="2" UId="157" />
+              <Token Text="IF" UId="158" />
+              <Blank Num="1" UId="159" />
+              <Access Scope="GlobalVariable" UId="160">
+                <Symbol UId="161">
+                  <Component Name="HMI_Basic" UId="162">
+                    <BooleanAttribute Name="HasQuotes" UId="163">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="164" />
+                  <Component Name="轴系选择" UId="165" />
+                  <Token Text="." UId="166" />
+                  <Component Name="中轴2" UId="167" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="168" />
+              <Token Text="=" UId="169" />
+              <Blank Num="1" UId="170" />
+              <Access Scope="LiteralConstant" UId="171">
+                <Constant UId="172">
+                  <ConstantValue UId="174">TRUE</ConstantValue>
+                </Constant>
+              </Access>
+              <Blank Num="1" UId="175" />
+              <Token Text="THEN" UId="176" />
+              <NewLine Num="1" UId="177" />
+              <Blank Num="4" UId="178" />
+              <Access Scope="GlobalVariable" UId="179">
+                <Symbol UId="180">
+                  <Component Name="Recipe_Control" UId="181">
+                    <BooleanAttribute Name="HasQuotes" UId="182">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="183" />
+                  <Component Name="Current_Recipe" UId="184" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="185" />
+              <Token Text=":=" UId="186" />
+              <Blank Num="1" UId="187" />
+              <Access Scope="GlobalVariable" UId="188">
+                <Symbol UId="189">
+                  <Component Name="Recipe_Control" UId="190">
+                    <BooleanAttribute Name="HasQuotes" UId="191">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="192" />
+                  <Component Name="中轴2" UId="193" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="194" />
+              <NewLine Num="1" UId="195" />
+              <Blank Num="4" UId="196" />
+              <Access Scope="GlobalVariable" UId="197">
+                <Symbol UId="198">
+                  <Component Name="MES_Control" UId="199">
+                    <BooleanAttribute Name="HasQuotes" UId="200">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="201" />
+                  <Component Name="轴系数据" UId="202" />
+                  <Token Text="." UId="203" />
+                  <Component Name="中轴2" UId="204" />
+                  <Token Text="." UId="205" />
+                  <Component Name="顶升距离" UId="206" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="207" />
+              <Token Text=":=" UId="208" />
+              <Blank Num="1" UId="209" />
+              <Access Scope="GlobalVariable" UId="210">
+                <Symbol UId="211">
+                  <Component Name="Displacement_Data" UId="212">
+                    <BooleanAttribute Name="HasQuotes" UId="213">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="214" />
+                  <Component Name="Current_Displacement" UId="215" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="216" />
+              <NewLine Num="1" UId="217" />
+              <Blank Num="4" UId="218" />
+              <Access Scope="GlobalVariable" UId="219">
+                <Symbol UId="220">
+                  <Component Name="MES_Control" UId="221">
+                    <BooleanAttribute Name="HasQuotes" UId="222">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="223" />
+                  <Component Name="轴系数据" UId="224" />
+                  <Token Text="." UId="225" />
+                  <Component Name="中轴2" UId="226" />
+                  <Token Text="." UId="227" />
+                  <Component Name="顶升压力" UId="228" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="229" />
+              <Token Text=":=" UId="230" />
+              <Blank Num="1" UId="231" />
+              <Access Scope="GlobalVariable" UId="232">
+                <Symbol UId="233">
+                  <Component Name="Pressure_Data" UId="234">
+                    <BooleanAttribute Name="HasQuotes" UId="235">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="236" />
+                  <Component Name="Current_Pressure" UId="237" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="238" />
+              <NewLine Num="1" UId="239" />
+              <Blank Num="4" UId="240" />
+              <Access Scope="GlobalVariable" UId="241">
+                <Symbol UId="242">
+                  <Component Name="MES_Control" UId="243">
+                    <BooleanAttribute Name="HasQuotes" UId="244">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="245" />
+                  <Component Name="轴系数据" UId="246" />
+                  <Token Text="." UId="247" />
+                  <Component Name="中轴2" UId="248" />
+                  <Token Text="." UId="249" />
+                  <Component Name="顶升速度" UId="250" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="251" />
+              <Token Text=":=" UId="252" />
+              <Blank Num="1" UId="253" />
+              <Access Scope="GlobalVariable" UId="254">
+                <Symbol UId="255">
+                  <Component Name="Servo_Data" UId="256">
+                    <BooleanAttribute Name="HasQuotes" UId="257">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="258" />
+                  <Component Name="Axis1" UId="259" />
+                  <Token Text="." UId="260" />
+                  <Component Name="Servo_Current_Velocity" UId="261">
+                    <Token Text="[" UId="262" />
+                    <Access Scope="LiteralConstant" UId="263">
+                      <Constant UId="264">
+                        <ConstantValue UId="266">1</ConstantValue>
+                      </Constant>
+                    </Access>
+                    <Token Text="]" UId="267" />
+                  </Component>
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="268" />
+              <NewLine Num="1" UId="269" />
+              <Blank Num="4" UId="270" />
+              <Access Scope="GlobalVariable" UId="271">
+                <Symbol UId="272">
+                  <Component Name="MES_Control" UId="273">
+                    <BooleanAttribute Name="HasQuotes" UId="274">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="275" />
+                  <Component Name="轴系数据" UId="276" />
+                  <Token Text="." UId="277" />
+                  <Component Name="中轴2" UId="278" />
+                  <Token Text="." UId="279" />
+                  <Component Name="顶升力" UId="280" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="281" />
+              <Token Text=":=" UId="282" />
+              <Blank Num="1" UId="283" />
+              <Access Scope="GlobalVariable" UId="284">
+                <Symbol UId="285">
+                  <Component Name="Weighing_Data" UId="286">
+                    <BooleanAttribute Name="HasQuotes" UId="287">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="288" />
+                  <Component Name="Current_Weighing" UId="289" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="290" />
+              <NewLine Num="1" UId="291" />
+              <Blank Num="4" UId="292" />
+              <NewLine Num="1" UId="293" />
+              <Token Text="END_IF" UId="294" />
+              <Token Text=";" UId="295" />
+              <NewLine Num="2" UId="296" />
+              <Token Text="IF" UId="297" />
+              <Blank Num="1" UId="298" />
+              <Access Scope="GlobalVariable" UId="299">
+                <Symbol UId="300">
+                  <Component Name="HMI_Basic" UId="301">
+                    <BooleanAttribute Name="HasQuotes" UId="302">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="303" />
+                  <Component Name="轴系选择" UId="304" />
+                  <Token Text="." UId="305" />
+                  <Component Name="中轴1" UId="306" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="307" />
+              <Token Text="=" UId="308" />
+              <Blank Num="1" UId="309" />
+              <Access Scope="LiteralConstant" UId="310">
+                <Constant UId="311">
+                  <ConstantValue UId="313">TRUE</ConstantValue>
+                </Constant>
+              </Access>
+              <Blank Num="1" UId="314" />
+              <Token Text="THEN" UId="315" />
+              <NewLine Num="1" UId="316" />
+              <Blank Num="4" UId="317" />
+              <Access Scope="GlobalVariable" UId="318">
+                <Symbol UId="319">
+                  <Component Name="Recipe_Control" UId="320">
+                    <BooleanAttribute Name="HasQuotes" UId="321">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="322" />
+                  <Component Name="Current_Recipe" UId="323" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="324" />
+              <Token Text=":=" UId="325" />
+              <Blank Num="1" UId="326" />
+              <Access Scope="GlobalVariable" UId="327">
+                <Symbol UId="328">
+                  <Component Name="Recipe_Control" UId="329">
+                    <BooleanAttribute Name="HasQuotes" UId="330">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="331" />
+                  <Component Name="中轴1" UId="332" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="333" />
+              <NewLine Num="1" UId="334" />
+              <Blank Num="4" UId="335" />
+              <Access Scope="GlobalVariable" UId="336">
+                <Symbol UId="337">
+                  <Component Name="MES_Control" UId="338">
+                    <BooleanAttribute Name="HasQuotes" UId="339">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="340" />
+                  <Component Name="轴系数据" UId="341" />
+                  <Token Text="." UId="342" />
+                  <Component Name="中轴1" UId="343" />
+                  <Token Text="." UId="344" />
+                  <Component Name="顶升距离" UId="345" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="346" />
+              <Token Text=":=" UId="347" />
+              <Blank Num="1" UId="348" />
+              <Access Scope="GlobalVariable" UId="349">
+                <Symbol UId="350">
+                  <Component Name="Displacement_Data" UId="351">
+                    <BooleanAttribute Name="HasQuotes" UId="352">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="353" />
+                  <Component Name="Current_Displacement" UId="354" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="355" />
+              <NewLine Num="1" UId="356" />
+              <Blank Num="4" UId="357" />
+              <Access Scope="GlobalVariable" UId="358">
+                <Symbol UId="359">
+                  <Component Name="MES_Control" UId="360">
+                    <BooleanAttribute Name="HasQuotes" UId="361">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="362" />
+                  <Component Name="轴系数据" UId="363" />
+                  <Token Text="." UId="364" />
+                  <Component Name="中轴1" UId="365" />
+                  <Token Text="." UId="366" />
+                  <Component Name="顶升压力" UId="367" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="368" />
+              <Token Text=":=" UId="369" />
+              <Blank Num="1" UId="370" />
+              <Access Scope="GlobalVariable" UId="371">
+                <Symbol UId="372">
+                  <Component Name="Pressure_Data" UId="373">
+                    <BooleanAttribute Name="HasQuotes" UId="374">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="375" />
+                  <Component Name="Current_Pressure" UId="376" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="377" />
+              <NewLine Num="1" UId="378" />
+              <Blank Num="4" UId="379" />
+              <Access Scope="GlobalVariable" UId="380">
+                <Symbol UId="381">
+                  <Component Name="MES_Control" UId="382">
+                    <BooleanAttribute Name="HasQuotes" UId="383">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="384" />
+                  <Component Name="轴系数据" UId="385" />
+                  <Token Text="." UId="386" />
+                  <Component Name="中轴1" UId="387" />
+                  <Token Text="." UId="388" />
+                  <Component Name="顶升速度" UId="389" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="390" />
+              <Token Text=":=" UId="391" />
+              <Blank Num="1" UId="392" />
+              <Access Scope="GlobalVariable" UId="393">
+                <Symbol UId="394">
+                  <Component Name="Servo_Data" UId="395">
+                    <BooleanAttribute Name="HasQuotes" UId="396">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="397" />
+                  <Component Name="Axis1" UId="398" />
+                  <Token Text="." UId="399" />
+                  <Component Name="Servo_Current_Velocity" UId="400">
+                    <Token Text="[" UId="401" />
+                    <Access Scope="LiteralConstant" UId="402">
+                      <Constant UId="403">
+                        <ConstantValue UId="405">1</ConstantValue>
+                      </Constant>
+                    </Access>
+                    <Token Text="]" UId="406" />
+                  </Component>
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="407" />
+              <NewLine Num="1" UId="408" />
+              <Blank Num="4" UId="409" />
+              <Access Scope="GlobalVariable" UId="410">
+                <Symbol UId="411">
+                  <Component Name="MES_Control" UId="412">
+                    <BooleanAttribute Name="HasQuotes" UId="413">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="414" />
+                  <Component Name="轴系数据" UId="415" />
+                  <Token Text="." UId="416" />
+                  <Component Name="中轴1" UId="417" />
+                  <Token Text="." UId="418" />
+                  <Component Name="顶升力" UId="419" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="420" />
+              <Token Text=":=" UId="421" />
+              <Blank Num="1" UId="422" />
+              <Access Scope="GlobalVariable" UId="423">
+                <Symbol UId="424">
+                  <Component Name="Weighing_Data" UId="425">
+                    <BooleanAttribute Name="HasQuotes" UId="426">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="427" />
+                  <Component Name="Current_Weighing" UId="428" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="429" />
+              <NewLine Num="1" UId="430" />
+              <Token Text="END_IF" UId="431" />
+              <Token Text=";" UId="432" />
+              <NewLine Num="2" UId="433" />
+              <Token Text="IF" UId="434" />
+              <Blank Num="1" UId="435" />
+              <Access Scope="GlobalVariable" UId="436">
+                <Symbol UId="437">
+                  <Component Name="HMI_Basic" UId="438">
+                    <BooleanAttribute Name="HasQuotes" UId="439">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="440" />
+                  <Component Name="轴系选择" UId="441" />
+                  <Token Text="." UId="442" />
+                  <Component Name="飞轮" UId="443" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="444" />
+              <Token Text="=" UId="445" />
+              <Blank Num="1" UId="446" />
+              <Access Scope="LiteralConstant" UId="447">
+                <Constant UId="448">
+                  <ConstantValue UId="450">TRUE</ConstantValue>
+                </Constant>
+              </Access>
+              <Blank Num="1" UId="451" />
+              <Token Text="THEN" UId="452" />
+              <NewLine Num="1" UId="453" />
+              <Blank Num="4" UId="454" />
+              <Access Scope="GlobalVariable" UId="455">
+                <Symbol UId="456">
+                  <Component Name="Recipe_Control" UId="457">
+                    <BooleanAttribute Name="HasQuotes" UId="458">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="459" />
+                  <Component Name="Current_Recipe" UId="460" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="461" />
+              <Token Text=":=" UId="462" />
+              <Blank Num="1" UId="463" />
+              <Access Scope="GlobalVariable" UId="464">
+                <Symbol UId="465">
+                  <Component Name="Recipe_Control" UId="466">
+                    <BooleanAttribute Name="HasQuotes" UId="467">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="468" />
+                  <Component Name="飞轮" UId="469" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="470" />
+              <NewLine Num="1" UId="471" />
+              <Blank Num="4" UId="472" />
+              <Access Scope="GlobalVariable" UId="473">
+                <Symbol UId="474">
+                  <Component Name="MES_Control" UId="475">
+                    <BooleanAttribute Name="HasQuotes" UId="476">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="477" />
+                  <Component Name="轴系数据" UId="478" />
+                  <Token Text="." UId="479" />
+                  <Component Name="飞轮" UId="480" />
+                  <Token Text="." UId="481" />
+                  <Component Name="顶升距离" UId="482" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="483" />
+              <Token Text=":=" UId="484" />
+              <Blank Num="1" UId="485" />
+              <Access Scope="GlobalVariable" UId="486">
+                <Symbol UId="487">
+                  <Component Name="Displacement_Data" UId="488">
+                    <BooleanAttribute Name="HasQuotes" UId="489">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="490" />
+                  <Component Name="Current_Displacement" UId="491" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="492" />
+              <NewLine Num="1" UId="493" />
+              <Blank Num="4" UId="494" />
+              <Access Scope="GlobalVariable" UId="495">
+                <Symbol UId="496">
+                  <Component Name="MES_Control" UId="497">
+                    <BooleanAttribute Name="HasQuotes" UId="498">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="499" />
+                  <Component Name="轴系数据" UId="500" />
+                  <Token Text="." UId="501" />
+                  <Component Name="飞轮" UId="502" />
+                  <Token Text="." UId="503" />
+                  <Component Name="顶升压力" UId="504" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="505" />
+              <Token Text=":=" UId="506" />
+              <Blank Num="1" UId="507" />
+              <Access Scope="GlobalVariable" UId="508">
+                <Symbol UId="509">
+                  <Component Name="Pressure_Data" UId="510">
+                    <BooleanAttribute Name="HasQuotes" UId="511">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="512" />
+                  <Component Name="Current_Pressure" UId="513" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="514" />
+              <NewLine Num="1" UId="515" />
+              <Blank Num="4" UId="516" />
+              <Access Scope="GlobalVariable" UId="517">
+                <Symbol UId="518">
+                  <Component Name="MES_Control" UId="519">
+                    <BooleanAttribute Name="HasQuotes" UId="520">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="521" />
+                  <Component Name="轴系数据" UId="522" />
+                  <Token Text="." UId="523" />
+                  <Component Name="飞轮" UId="524" />
+                  <Token Text="." UId="525" />
+                  <Component Name="顶升速度" UId="526" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="527" />
+              <Token Text=":=" UId="528" />
+              <Blank Num="1" UId="529" />
+              <Access Scope="GlobalVariable" UId="530">
+                <Symbol UId="531">
+                  <Component Name="Servo_Data" UId="532">
+                    <BooleanAttribute Name="HasQuotes" UId="533">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="534" />
+                  <Component Name="Axis1" UId="535" />
+                  <Token Text="." UId="536" />
+                  <Component Name="Servo_Current_Velocity" UId="537">
+                    <Token Text="[" UId="538" />
+                    <Access Scope="LiteralConstant" UId="539">
+                      <Constant UId="540">
+                        <ConstantValue UId="542">1</ConstantValue>
+                      </Constant>
+                    </Access>
+                    <Token Text="]" UId="543" />
+                  </Component>
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="544" />
+              <NewLine Num="1" UId="545" />
+              <Blank Num="4" UId="546" />
+              <Access Scope="GlobalVariable" UId="547">
+                <Symbol UId="548">
+                  <Component Name="MES_Control" UId="549">
+                    <BooleanAttribute Name="HasQuotes" UId="550">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="551" />
+                  <Component Name="轴系数据" UId="552" />
+                  <Token Text="." UId="553" />
+                  <Component Name="飞轮" UId="554" />
+                  <Token Text="." UId="555" />
+                  <Component Name="顶升力" UId="556" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="557" />
+              <Token Text=":=" UId="558" />
+              <Blank Num="1" UId="559" />
+              <Access Scope="GlobalVariable" UId="560">
+                <Symbol UId="561">
+                  <Component Name="Weighing_Data" UId="562">
+                    <BooleanAttribute Name="HasQuotes" UId="563">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="564" />
+                  <Component Name="Current_Weighing" UId="565" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="566" />
+              <NewLine Num="1" UId="567" />
+              <Token Text="END_IF" UId="568" />
+              <Token Text=";" UId="569" />
+              <NewLine Num="2" UId="570" />
+              <Token Text="IF" UId="571" />
+              <Blank Num="1" UId="572" />
+              <Access Scope="GlobalVariable" UId="573">
+                <Symbol UId="574">
+                  <Component Name="HMI_Basic" UId="575">
+                    <BooleanAttribute Name="HasQuotes" UId="576">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="577" />
+                  <Component Name="轴系选择" UId="578" />
+                  <Token Text="." UId="579" />
+                  <Component Name="1#" UId="580" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="581" />
+              <Token Text="=" UId="582" />
+              <Blank Num="1" UId="583" />
+              <Access Scope="LiteralConstant" UId="584">
+                <Constant UId="585">
+                  <ConstantValue UId="587">TRUE</ConstantValue>
+                </Constant>
+              </Access>
+              <Blank Num="1" UId="588" />
+              <Token Text="THEN" UId="589" />
+              <NewLine Num="1" UId="590" />
+              <Blank Num="4" UId="591" />
+              <Access Scope="GlobalVariable" UId="592">
+                <Symbol UId="593">
+                  <Component Name="Recipe_Control" UId="594">
+                    <BooleanAttribute Name="HasQuotes" UId="595">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="596" />
+                  <Component Name="Current_Recipe" UId="597" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="598" />
+              <Token Text=":=" UId="599" />
+              <Blank Num="1" UId="600" />
+              <Access Scope="GlobalVariable" UId="601">
+                <Symbol UId="602">
+                  <Component Name="Recipe_Control" UId="603">
+                    <BooleanAttribute Name="HasQuotes" UId="604">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="605" />
+                  <Component Name="1#" UId="606" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="607" />
+              <NewLine Num="1" UId="608" />
+              <Blank Num="4" UId="609" />
+              <Access Scope="GlobalVariable" UId="610">
+                <Symbol UId="611">
+                  <Component Name="MES_Control" UId="612">
+                    <BooleanAttribute Name="HasQuotes" UId="613">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="614" />
+                  <Component Name="轴系数据" UId="615" />
+                  <Token Text="." UId="616" />
+                  <Component Name="1#" UId="617" />
+                  <Token Text="." UId="618" />
+                  <Component Name="顶升距离" UId="619" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="620" />
+              <Token Text=":=" UId="621" />
+              <Blank Num="1" UId="622" />
+              <Access Scope="GlobalVariable" UId="623">
+                <Symbol UId="624">
+                  <Component Name="Displacement_Data" UId="625">
+                    <BooleanAttribute Name="HasQuotes" UId="626">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="627" />
+                  <Component Name="Current_Displacement" UId="628" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="629" />
+              <NewLine Num="1" UId="630" />
+              <Blank Num="4" UId="631" />
+              <Access Scope="GlobalVariable" UId="632">
+                <Symbol UId="633">
+                  <Component Name="MES_Control" UId="634">
+                    <BooleanAttribute Name="HasQuotes" UId="635">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="636" />
+                  <Component Name="轴系数据" UId="637" />
+                  <Token Text="." UId="638" />
+                  <Component Name="1#" UId="639" />
+                  <Token Text="." UId="640" />
+                  <Component Name="顶升压力" UId="641" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="642" />
+              <Token Text=":=" UId="643" />
+              <Blank Num="1" UId="644" />
+              <Access Scope="GlobalVariable" UId="645">
+                <Symbol UId="646">
+                  <Component Name="Pressure_Data" UId="647">
+                    <BooleanAttribute Name="HasQuotes" UId="648">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="649" />
+                  <Component Name="Current_Pressure" UId="650" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="651" />
+              <NewLine Num="1" UId="652" />
+              <Blank Num="4" UId="653" />
+              <Access Scope="GlobalVariable" UId="654">
+                <Symbol UId="655">
+                  <Component Name="MES_Control" UId="656">
+                    <BooleanAttribute Name="HasQuotes" UId="657">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="658" />
+                  <Component Name="轴系数据" UId="659" />
+                  <Token Text="." UId="660" />
+                  <Component Name="1#" UId="661" />
+                  <Token Text="." UId="662" />
+                  <Component Name="顶升速度" UId="663" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="664" />
+              <Token Text=":=" UId="665" />
+              <Blank Num="1" UId="666" />
+              <Access Scope="GlobalVariable" UId="667">
+                <Symbol UId="668">
+                  <Component Name="Servo_Data" UId="669">
+                    <BooleanAttribute Name="HasQuotes" UId="670">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="671" />
+                  <Component Name="Axis1" UId="672" />
+                  <Token Text="." UId="673" />
+                  <Component Name="Servo_Current_Velocity" UId="674">
+                    <Token Text="[" UId="675" />
+                    <Access Scope="LiteralConstant" UId="676">
+                      <Constant UId="677">
+                        <ConstantValue UId="679">1</ConstantValue>
+                      </Constant>
+                    </Access>
+                    <Token Text="]" UId="680" />
+                  </Component>
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="681" />
+              <NewLine Num="1" UId="682" />
+              <Blank Num="4" UId="683" />
+              <Access Scope="GlobalVariable" UId="684">
+                <Symbol UId="685">
+                  <Component Name="MES_Control" UId="686">
+                    <BooleanAttribute Name="HasQuotes" UId="687">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="688" />
+                  <Component Name="轴系数据" UId="689" />
+                  <Token Text="." UId="690" />
+                  <Component Name="1#" UId="691" />
+                  <Token Text="." UId="692" />
+                  <Component Name="顶升力" UId="693" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="694" />
+              <Token Text=":=" UId="695" />
+              <Blank Num="1" UId="696" />
+              <Access Scope="GlobalVariable" UId="697">
+                <Symbol UId="698">
+                  <Component Name="Weighing_Data" UId="699">
+                    <BooleanAttribute Name="HasQuotes" UId="700">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="701" />
+                  <Component Name="Current_Weighing" UId="702" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="703" />
+              <NewLine Num="1" UId="704" />
+              <Token Text="END_IF" UId="705" />
+              <Token Text=";" UId="706" />
+              <NewLine Num="1" UId="707" />
+              <Token Text="IF" UId="708" />
+              <Blank Num="1" UId="709" />
+              <Access Scope="GlobalVariable" UId="710">
+                <Symbol UId="711">
+                  <Component Name="HMI_Basic" UId="712">
+                    <BooleanAttribute Name="HasQuotes" UId="713">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="714" />
+                  <Component Name="轴系选择" UId="715" />
+                  <Token Text="." UId="716" />
+                  <Component Name="2#" UId="717" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="718" />
+              <Token Text="=" UId="719" />
+              <Blank Num="1" UId="720" />
+              <Access Scope="LiteralConstant" UId="721">
+                <Constant UId="722">
+                  <ConstantValue UId="724">TRUE</ConstantValue>
+                </Constant>
+              </Access>
+              <Blank Num="1" UId="725" />
+              <Token Text="THEN" UId="726" />
+              <NewLine Num="1" UId="727" />
+              <Blank Num="4" UId="728" />
+              <Access Scope="GlobalVariable" UId="729">
+                <Symbol UId="730">
+                  <Component Name="Recipe_Control" UId="731">
+                    <BooleanAttribute Name="HasQuotes" UId="732">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="733" />
+                  <Component Name="Current_Recipe" UId="734" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="735" />
+              <Token Text=":=" UId="736" />
+              <Blank Num="1" UId="737" />
+              <Access Scope="GlobalVariable" UId="738">
+                <Symbol UId="739">
+                  <Component Name="Recipe_Control" UId="740">
+                    <BooleanAttribute Name="HasQuotes" UId="741">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="742" />
+                  <Component Name="2#" UId="743" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="744" />
+              <NewLine Num="1" UId="745" />
+              <Blank Num="4" UId="746" />
+              <Access Scope="GlobalVariable" UId="747">
+                <Symbol UId="748">
+                  <Component Name="MES_Control" UId="749">
+                    <BooleanAttribute Name="HasQuotes" UId="750">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="751" />
+                  <Component Name="轴系数据" UId="752" />
+                  <Token Text="." UId="753" />
+                  <Component Name="2#" UId="754" />
+                  <Token Text="." UId="755" />
+                  <Component Name="顶升距离" UId="756" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="757" />
+              <Token Text=":=" UId="758" />
+              <Blank Num="1" UId="759" />
+              <Access Scope="GlobalVariable" UId="760">
+                <Symbol UId="761">
+                  <Component Name="Displacement_Data" UId="762">
+                    <BooleanAttribute Name="HasQuotes" UId="763">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="764" />
+                  <Component Name="Current_Displacement" UId="765" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="766" />
+              <NewLine Num="1" UId="767" />
+              <Blank Num="4" UId="768" />
+              <Access Scope="GlobalVariable" UId="769">
+                <Symbol UId="770">
+                  <Component Name="MES_Control" UId="771">
+                    <BooleanAttribute Name="HasQuotes" UId="772">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="773" />
+                  <Component Name="轴系数据" UId="774" />
+                  <Token Text="." UId="775" />
+                  <Component Name="2#" UId="776" />
+                  <Token Text="." UId="777" />
+                  <Component Name="顶升压力" UId="778" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="779" />
+              <Token Text=":=" UId="780" />
+              <Blank Num="1" UId="781" />
+              <Access Scope="GlobalVariable" UId="782">
+                <Symbol UId="783">
+                  <Component Name="Pressure_Data" UId="784">
+                    <BooleanAttribute Name="HasQuotes" UId="785">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="786" />
+                  <Component Name="Current_Pressure" UId="787" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="788" />
+              <NewLine Num="1" UId="789" />
+              <Blank Num="4" UId="790" />
+              <Access Scope="GlobalVariable" UId="791">
+                <Symbol UId="792">
+                  <Component Name="MES_Control" UId="793">
+                    <BooleanAttribute Name="HasQuotes" UId="794">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="795" />
+                  <Component Name="轴系数据" UId="796" />
+                  <Token Text="." UId="797" />
+                  <Component Name="2#" UId="798" />
+                  <Token Text="." UId="799" />
+                  <Component Name="顶升速度" UId="800" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="801" />
+              <Token Text=":=" UId="802" />
+              <Blank Num="1" UId="803" />
+              <Access Scope="GlobalVariable" UId="804">
+                <Symbol UId="805">
+                  <Component Name="Servo_Data" UId="806">
+                    <BooleanAttribute Name="HasQuotes" UId="807">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="808" />
+                  <Component Name="Axis1" UId="809" />
+                  <Token Text="." UId="810" />
+                  <Component Name="Servo_Current_Velocity" UId="811">
+                    <Token Text="[" UId="812" />
+                    <Access Scope="LiteralConstant" UId="813">
+                      <Constant UId="814">
+                        <ConstantValue UId="816">1</ConstantValue>
+                      </Constant>
+                    </Access>
+                    <Token Text="]" UId="817" />
+                  </Component>
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="818" />
+              <NewLine Num="1" UId="819" />
+              <Blank Num="4" UId="820" />
+              <Access Scope="GlobalVariable" UId="821">
+                <Symbol UId="822">
+                  <Component Name="MES_Control" UId="823">
+                    <BooleanAttribute Name="HasQuotes" UId="824">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="825" />
+                  <Component Name="轴系数据" UId="826" />
+                  <Token Text="." UId="827" />
+                  <Component Name="2#" UId="828" />
+                  <Token Text="." UId="829" />
+                  <Component Name="顶升力" UId="830" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="831" />
+              <Token Text=":=" UId="832" />
+              <Blank Num="1" UId="833" />
+              <Access Scope="GlobalVariable" UId="834">
+                <Symbol UId="835">
+                  <Component Name="Weighing_Data" UId="836">
+                    <BooleanAttribute Name="HasQuotes" UId="837">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="838" />
+                  <Component Name="Current_Weighing" UId="839" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="840" />
+              <NewLine Num="1" UId="841" />
+              <Token Text="END_IF" UId="842" />
+              <Token Text=";" UId="843" />
+              <NewLine Num="1" UId="844" />
+              <Blank Num="4" UId="845" />
+              <NewLine Num="1" UId="846" />
+              <Blank Num="4" UId="847" />
+              <NewLine Num="1" UId="848" />
+              <Blank Num="4" UId="849" />
+              <NewLine Num="1" UId="850" />
+              <Blank Num="4" UId="851" />
+              <NewLine Num="1" UId="852" />
+              <Blank Num="4" UId="853" />
+              <NewLine Num="1" UId="854" />
+              <Blank Num="4" UId="855" />
+              <NewLine Num="1" UId="856" />
+              <Blank Num="4" UId="857" />
+            </StructuredText>
+          </NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="4" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="5" CompositionName="Items">
+                <AttributeList>
+                  <Culture>zh-CN</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="6" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="7" CompositionName="Items">
+                <AttributeList>
+                  <Culture>zh-CN</Culture>
+                  <Text>获取配方</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="8" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource>
+            <StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+              <Access Scope="GlobalVariable" UId="21">
+                <Symbol UId="22">
+                  <Component Name="Recipe_Control" UId="23">
+                    <BooleanAttribute Name="HasQuotes" UId="24">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="25" />
+                  <Component Name="尾轴" UId="26" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="27" />
+              <Token Text=":=" UId="28" />
+              <Blank Num="1" UId="29" />
+              <Access Scope="GlobalVariable" UId="30">
+                <Symbol UId="31">
+                  <Component Name="HMI_Basic" UId="32">
+                    <BooleanAttribute Name="HasQuotes" UId="33">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="34" />
+                  <Component Name="尾轴" UId="35" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="36" />
+              <NewLine Num="1" UId="37" />
+              <Access Scope="GlobalVariable" UId="38">
+                <Symbol UId="39">
+                  <Component Name="Recipe_Control" UId="40">
+                    <BooleanAttribute Name="HasQuotes" UId="41">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="42" />
+                  <Component Name="中轴2" UId="43" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="44" />
+              <Token Text=":=" UId="45" />
+              <Blank Num="1" UId="46" />
+              <Access Scope="GlobalVariable" UId="47">
+                <Symbol UId="48">
+                  <Component Name="HMI_Basic" UId="49">
+                    <BooleanAttribute Name="HasQuotes" UId="50">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="51" />
+                  <Component Name="中轴2" UId="52" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="53" />
+              <NewLine Num="1" UId="54" />
+              <Access Scope="GlobalVariable" UId="55">
+                <Symbol UId="56">
+                  <Component Name="Recipe_Control" UId="57">
+                    <BooleanAttribute Name="HasQuotes" UId="58">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="59" />
+                  <Component Name="中轴1" UId="60" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="61" />
+              <Token Text=":=" UId="62" />
+              <Blank Num="1" UId="63" />
+              <Access Scope="GlobalVariable" UId="64">
+                <Symbol UId="65">
+                  <Component Name="HMI_Basic" UId="66">
+                    <BooleanAttribute Name="HasQuotes" UId="67">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="68" />
+                  <Component Name="中轴1" UId="69" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="70" />
+              <NewLine Num="1" UId="71" />
+              <Access Scope="GlobalVariable" UId="72">
+                <Symbol UId="73">
+                  <Component Name="Recipe_Control" UId="74">
+                    <BooleanAttribute Name="HasQuotes" UId="75">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="76" />
+                  <Component Name="飞轮" UId="77" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="78" />
+              <Token Text=":=" UId="79" />
+              <Blank Num="1" UId="80" />
+              <Access Scope="GlobalVariable" UId="81">
+                <Symbol UId="82">
+                  <Component Name="HMI_Basic" UId="83">
+                    <BooleanAttribute Name="HasQuotes" UId="84">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="85" />
+                  <Component Name="飞轮" UId="86" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="87" />
+              <NewLine Num="1" UId="88" />
+              <Access Scope="GlobalVariable" UId="89">
+                <Symbol UId="90">
+                  <Component Name="Recipe_Control" UId="91">
+                    <BooleanAttribute Name="HasQuotes" UId="92">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="93" />
+                  <Component Name="1#" UId="94" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="95" />
+              <Token Text=":=" UId="96" />
+              <Blank Num="1" UId="97" />
+              <Access Scope="GlobalVariable" UId="98">
+                <Symbol UId="99">
+                  <Component Name="HMI_Basic" UId="100">
+                    <BooleanAttribute Name="HasQuotes" UId="101">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="102" />
+                  <Component Name="1#" UId="103" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="104" />
+              <NewLine Num="1" UId="105" />
+              <Access Scope="GlobalVariable" UId="106">
+                <Symbol UId="107">
+                  <Component Name="Recipe_Control" UId="108">
+                    <BooleanAttribute Name="HasQuotes" UId="109">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="110" />
+                  <Component Name="2#" UId="111" />
+                </Symbol>
+              </Access>
+              <Blank Num="1" UId="112" />
+              <Token Text=":=" UId="113" />
+              <Blank Num="1" UId="114" />
+              <Access Scope="GlobalVariable" UId="115">
+                <Symbol UId="116">
+                  <Component Name="HMI_Basic" UId="117">
+                    <BooleanAttribute Name="HasQuotes" UId="118">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="119" />
+                  <Component Name="2#" UId="120" />
+                </Symbol>
+              </Access>
+              <Token Text=";" UId="121" />
+              <NewLine Num="1" UId="122" />
+            </StructuredText>
+          </NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="9" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="A" CompositionName="Items">
+                <AttributeList>
+                  <Culture>zh-CN</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="B" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="C" CompositionName="Items">
+                <AttributeList>
+                  <Culture>zh-CN</Culture>
+                  <Text>配方设置</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="D" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource>
+            <StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4" />
+          </NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="E" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="F" CompositionName="Items">
+                <AttributeList>
+                  <Culture>zh-CN</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="10" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="11" CompositionName="Items">
+                <AttributeList>
+                  <Culture>zh-CN</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <MultilingualText ID="12" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="13" CompositionName="Items">
+            <AttributeList>
+              <Culture>zh-CN</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.FC>
+</Document>

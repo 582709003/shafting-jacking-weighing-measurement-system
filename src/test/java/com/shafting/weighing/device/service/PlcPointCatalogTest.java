@@ -25,10 +25,14 @@ class PlcPointCatalogTest {
                 .isEqualTo("%DB100.DBX1.0:BOOL");
         assertThat(PlcPointCatalog.channel("TAIL_SHAFT").standardForce())
                 .isEqualTo("%DB100.DBD196:REAL");
-        assertThat(PlcPointCatalog.channel("INTERMEDIATE_1").forceInterval())
+        assertThat(PlcPointCatalog.channel("INTERMEDIATE_1").pressureInterval())
                 .isEqualTo("%DB100.DBW264:INT");
         assertThat(PlcPointCatalog.channel("MAIN_ENGINE_2").holdSeconds())
                 .isEqualTo("%DB100.DBD344:REAL");
+        assertThat(PlcPointCatalog.pointCodes().stream()
+                .map(pointCode -> PlcPointCatalog.channel(pointCode).maxDisplacement()).toList())
+                .containsExactly("%DB100.DBD204:REAL", "%DB100.DBD256:REAL", "%DB100.DBD230:REAL",
+                        "%DB100.DBD282:REAL", "%DB100.DBD308:REAL", "%DB100.DBD334:REAL");
     }
 
     @Test

@@ -91,8 +91,8 @@ public final class PlcPointCatalog {
             /** 顶升力REAL点，单位kN。 */ String force,
             /** 标准值REAL点，单位kN。 */ String standardForce,
             /** 顶升系数REAL点。 */ String jackingCoefficient,
-            /** 自动目标位移REAL点，单位mm。 */ String maxDisplacement,
+            /** 手动与自动共用的配方顶升距离 REAL 点，单位 mm。 */ String maxDisplacement,
             /** 顶升速度设置REAL点，单位r/min。 */ String configuredMotorRpm,
-            /** 力值间隔INT点，单位kN。 */ String forceInterval,
+            /** 压力间隔 INT 点，单位 MPa。 */ String pressureInterval,
             /** 时间间隔REAL点，单位秒。 */ String holdSeconds) { }
 }

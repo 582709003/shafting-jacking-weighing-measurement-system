@@ -135,20 +135,21 @@ class PhaseOneIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.configName").value("默认六点参数"))
                 .andExpect(jsonPath("$.points.length()").value(6))
-                .andExpect(jsonPath("$.points[0].forceIntervalKn").value(1.0000));
+                .andExpect(jsonPath("$.points[0].pressureIntervalMpa").value(1.0000))
+                .andExpect(jsonPath("$.points[0].forceIntervalKn").doesNotExist());
 
         Integer auditCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM sys_operation_log WHERE operation = 'UPDATE_CONFIG'",
                 Integer.class);
         assertThat(auditCount).isEqualTo(1);
         Integer intervalCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM test_config_point WHERE force_interval_kn = 1.0000",
+                "SELECT COUNT(*) FROM test_config_point WHERE pressure_interval_mpa = 1.0000",
                 Integer.class);
         assertThat(intervalCount).isEqualTo(6);
         String auditJson = jdbcTemplate.queryForObject(
                 "SELECT detail_json FROM sys_operation_log WHERE operation = 'UPDATE_CONFIG'",
                 String.class);
-        assertThat(auditJson).contains("\"forceIntervalKn\":1");
+        assertThat(auditJson).contains("\"pressureIntervalMpa\":1");
     }
 
     @Test
@@ -213,13 +214,13 @@ class PhaseOneIntegrationTest {
                                 "jackingCoefficient", new BigDecimal("1.0000"),
                                 "maxDisplacement", new BigDecimal("0.40"),
                                 "motorRpm", 1200,
-                                "forceIntervalKn", BigDecimal.ONE))))
+                                "pressureIntervalMpa", BigDecimal.ONE))))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     @WithMockUser(username = "engineer", roles = "ENGINEER")
-    void shouldRejectForceIntervalOutsidePlcIntegerRange() throws Exception {
+    void shouldRejectPressureIntervalOutsidePlcIntegerRange() throws Exception {
         List<BigDecimal> invalidIntervals = List.of(
                 BigDecimal.ZERO,
                 new BigDecimal("0.5"),
@@ -275,7 +276,7 @@ class PhaseOneIntegrationTest {
                         "jackingCoefficient", new BigDecimal("1.0000"),
                         "maxDisplacement", new BigDecimal("0.40"),
                         "motorRpm", 1200,
-                        "forceIntervalKn", BigDecimal.ONE,
+                        "pressureIntervalMpa", BigDecimal.ONE,
                         "holdSeconds", 5))
                 .toList();
         return objectMapper.writeValueAsBytes(Map.of(
@@ -287,7 +288,7 @@ class PhaseOneIntegrationTest {
         return pointRequest(pointCode, standardForce, BigDecimal.ONE);
     }
 
-    private byte[] pointRequest(String pointCode, String standardForce, BigDecimal forceIntervalKn)
+    private byte[] pointRequest(String pointCode, String standardForce, BigDecimal pressureIntervalMpa)
             throws Exception {
         return objectMapper.writeValueAsBytes(Map.of(
                 "pointCode", pointCode,
@@ -296,7 +297,7 @@ class PhaseOneIntegrationTest {
                 "jackingCoefficient", new BigDecimal("1.0000"),
                 "maxDisplacement", new BigDecimal("0.40"),
                 "motorRpm", 1200,
-                "forceIntervalKn", forceIntervalKn,
+                "pressureIntervalMpa", pressureIntervalMpa,
                 "holdSeconds", 5));
     }
 

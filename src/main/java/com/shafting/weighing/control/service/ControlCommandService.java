@@ -406,21 +406,21 @@ public class ControlCommandService {
                 || config.getJackingCoefficient() == null || config.getJackingCoefficient().signum() <= 0
                 || config.getMaxDisplacement() == null || config.getMaxDisplacement().signum() <= 0
                 || config.getMotorRpm() == null || config.getMotorRpm() <= 0
-                || config.getForceIntervalKn() == null || config.getForceIntervalKn().signum() <= 0
+                || config.getPressureIntervalMpa() == null || config.getPressureIntervalMpa().signum() <= 0
                 || config.getHoldSeconds() == null || config.getHoldSeconds() <= 0) {
             throw conflict("当前通道自动测量参数未完整配置");
         }
-        int forceInterval;
+        int pressureInterval;
         try {
-            forceInterval = config.getForceIntervalKn().intValueExact();
+            pressureInterval = config.getPressureIntervalMpa().intValueExact();
         } catch (ArithmeticException exception) {
-            throw conflict("力值间隔必须是 1～32767 kN 的整数");
+            throw conflict("压力间隔必须是 1～32767 MPa 的整数");
         }
-        if (forceInterval > Short.MAX_VALUE) {
-            throw conflict("力值间隔必须是 1～32767 kN 的整数");
+        if (pressureInterval > Short.MAX_VALUE) {
+            throw conflict("压力间隔必须是 1～32767 MPa 的整数");
         }
         return new DeviceCommandGateway.AutomaticConfiguration(config.getMaxDisplacement(),
-                BigDecimal.valueOf(config.getMotorRpm()), forceInterval,
+                BigDecimal.valueOf(config.getMotorRpm()), pressureInterval,
                 BigDecimal.valueOf(config.getHoldSeconds()));
     }
 
